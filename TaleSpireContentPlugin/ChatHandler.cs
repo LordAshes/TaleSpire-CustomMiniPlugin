@@ -78,6 +78,30 @@ namespace CustomMiniPlugin
         }
 
         /// <summary>
+        /// Method to sync the transformation mesh with the character's stealth mode setting
+        /// </summary>
+        public void SyncStealthMode()
+        {
+            foreach (CreatureBoardAsset asset in CreaturePresenter.AllCreatureAssets.ToArray())
+            {
+                if (transformations.ContainsKey(asset.Creature.CreatureId.ToString()))
+                {
+                    GameObject child = GameObject.Find("CustomContent:" + asset.Creature.CreatureId);
+                    if(asset.Creature.IsExplicitlyHidden && child.transform.localScale.y != 0)
+                    {
+                        UnityEngine.Debug.Log("Hiding Custom Mesh...");
+                        child.transform.localScale = new Vector3(0, 0, 0);
+                    }
+                    else if (!asset.Creature.IsExplicitlyHidden && child.transform.localScale.y != 1)
+                    {
+                        UnityEngine.Debug.Log("Unhiding Custom Mesh...");
+                        child.transform.localScale = new Vector3(1, 1, 1);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// Method to process char requests
         /// </summary>
         /// <param name="request">Chat request without the identifier</param>
