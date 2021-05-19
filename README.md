@@ -1,6 +1,8 @@
-# CharacterView Plugin
+# Custom Mini Plugin
 
 This unofficial TaleSpire plugin is for adding an unlimited number of custom minis.
+
+https://youtu.be/sRYln7Gc6Dg
 
 ## Install
 
@@ -27,10 +29,39 @@ applied on the GM side and on all players' sides.
 Once a board is no longer going to be used, the corresponding transformation file can be deleted by issuing the following command
 in the chat bar: ! DELETE
 
-## Current Limitations
+## Adding Custom Content
 
-1. The custom content is limited to OBJ/MTL files. If the MTL files uses textures they must be BMP (not PNG or JPG).
-2. When issuing the ! TRANSFORM or ! DELETE command, a mini must be seelcted.
+Each piece of custom content needs to consist of a OBJ file and MTL file. It can, optionally also contain texture files, which
+should be in BMP format (PNG and JPG is currently not yet supported). References to files should be relative and in the same
+directory (i.e. don't use full paths for texture file names). The name of OBJ file and MTL file should be the same except for
+the extension. The texture files can have any name (e.g. if used by multiple models). The content file name is the name that is
+used to access it in TaleSpire. For example, the content Warlock.OBJ and Warlock.MTL would be accessed by Warlock (without the
+extension).
+
+OBJ and MTL files are to be placed in \Steam\steamapps\common\TaleSpire\TaleSpire_CustomData
+
+This directory needs to be create manually, it does not exists as part of the game and the plugin does not create it.
+
+Texture files are to be placed in \Steam\steamapps\common\TaleSpire\TaleSpire_CustomData_Textures
+
+This directory needs to be create manually, it does not exists as part of the game and the plugin does not create it.
+
+Since the custom content files are only read when they are needed, the content can be added, removed or modified while TaleSpire
+is running. This allows easy testing of custom models.
+
+## Ideal Base
+
+In order for the plugin to work best, a blank base is needed. For users who do not want to create their own blank base,
+a blank base file is included which turns the TaleSpire Christmas Mimic into a blank base. There are two files that need
+to be applied in order to get the blank base. Both are included in the plugin ZIP file.
+
+Place "aTBvbnNj" in the ""\Steam\steamapps\common\TaleSpire\Taleweaver" folder.
+Place "char_mimic02_1606620485" in the "\Steam\steamapps\common\TaleSpire\Taleweaver\Assets" folder.
+
+Both of these files should already exist. Just replace them. You can back up the original files if you wish but Steam can
+always revert the files back to their original if needed. 
+
+Once these files are applied and TaleSpire is restarted, you should find the Blank Base under Creatures | Monsterous.
 
 ## How to Compile / Modify
 
