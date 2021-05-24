@@ -133,7 +133,7 @@ namespace CustomMiniPlugin
                         UnityEngine.Debug.Log("Chat Request: Id=" + id + ", Source=" + source);
 
                         // Check that indicated content file exits
-                        if (!System.IO.File.Exists(dir + source + ".obj")) { return "Content '" + dir + source + ".obj" + "' does not exist"; }
+                        if (!System.IO.File.Exists(dir + source + "/"+source+".obj")) { return "Content '" + dir + source + ".obj" + "' does not exist"; }
                         // Find indicated asset
                         UnityEngine.Debug.Log("Searching for Chat Request Asset");
                         foreach (CreatureBoardAsset asset in CreaturePresenter.AllCreatureAssets.ToArray())
@@ -199,7 +199,7 @@ namespace CustomMiniPlugin
         {
             UnityEngine.Debug.Log("Customizing Mini '" + asset.Creature.Name + "' Using '" + dir+source + ".obj'...");
             GameObject.Destroy(GameObject.Find("CustomContent:" + asset.Creature.CreatureId));
-            GameObject content = new OBJLoader().Load(dir+source+".obj");
+            GameObject content = new OBJLoader().Load(dir+source+"/"+source+".obj");
             content.name = "CustomContent:" + asset.Creature.CreatureId;
             content.transform.position = asset.gameObject.transform.position;
             content.transform.SetParent(asset.BaseLoader.gameObject.transform);

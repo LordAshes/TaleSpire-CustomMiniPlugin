@@ -64,6 +64,7 @@ namespace Dummiesman
                 stream.Read(buffer, 0, (int)stream.Length);
 
                 Texture2D texture = new Texture2D(1, 1);
+                texture.LoadRawTextureData(buffer);
                 // texture.LoadImage(buffer);
                 
                 return texture;

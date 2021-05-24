@@ -11,7 +11,7 @@ using System.Collections.Generic;
 
 namespace CustomMiniPlugin
 {
-    [BepInPlugin("org.d20armyknife.plugins.CustomMini", "Custom Mini Plug-In", "1.4.2.0")]
+    [BepInPlugin("org.d20armyknife.plugins.CustomMini", "Custom Mini Plug-In", "1.5.0.0")]
     public class CustomMiniPlugin : BaseUnityPlugin
     {
         // Used to turn diagnostics on or off
