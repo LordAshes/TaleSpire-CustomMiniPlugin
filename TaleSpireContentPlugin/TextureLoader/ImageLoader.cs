@@ -61,6 +61,7 @@ namespace Dummiesman
             else if (format == TextureFormat.JPG || format == TextureFormat.PNG)
             {
                 byte[] buffer = new byte[stream.Length];
+
                 stream.Read(buffer, 0, (int)stream.Length);
 
                 Texture2D texture = new Texture2D(1, 1);
