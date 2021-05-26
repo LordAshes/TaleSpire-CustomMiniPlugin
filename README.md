@@ -3,7 +3,18 @@
 This unofficial TaleSpire plugin is for adding an unlimited number of custom minis.
 
 Demo Video: https://youtu.be/sRYln7Gc6Dg
+
 Adding Content Video: https://youtu.be/JJ0xJQUM01U
+
+Please note that the Adding Content Video is currently out of date. Most of the video is still applicable but the content needs to use a Minis sub-folder (see info below) and PNG and JPG texture can now be used.
+
+## Change Log
+
+1.6.0: OBJ, MTL and texture files expected in a minis folder and then a sub-folder named after the asset (e.g. TaleSpire_CustomData\Minis\Wizard\Wizard.obj)
+1.6.0: Added fake JPG and PNG support. Asset can use JPG/PNG textures which the plugin automatically converts to BMPs.
+1.5.0: Fixed shader bug. Content uses the Standard shader (not the TaleSpire\Creature shader).
+1.5.0: OBJ, MTL and texture files expected in a sub folder named after the asset (e.g. TaleSpire_CustomData\Wizard\Wizard.obj)
+1.5.0: Includes the TaleSpire_CustomData folder in ZIP along with a Test content
 
 ## Install
 
@@ -33,19 +44,16 @@ in the chat bar: ! DELETE
 ## Adding Custom Content
 
 Each piece of custom content needs to consist of a OBJ file and MTL file. It can, optionally also contain texture files, which
-should be in BMP format (PNG and JPG is currently not yet supported). References to files should be relative and in the same
-directory (i.e. don't use full paths for texture file names). The name of OBJ file and MTL file should be the same except for
-the extension. The texture files can have any name (e.g. if used by multiple models). The content file name is the name that is
-used to access it in TaleSpire. For example, the content Warlock.OBJ and Warlock.MTL would be accessed by Warlock (without the
-extension).
+should be in BMP format. PNG and JPG can now be used but will be automatically converted to BMP by the plugin. References to files
+should be relative and in the same directory (i.e. don't use full paths for texture file names). The name of OBJ file and MTL file
+should be the same except for the extension. The texture files can have any name (e.g. if used by multiple models). The content
+file name is the name that is used to access it in TaleSpire. For example, the content Warlock.OBJ and Warlock.MTL would be
+accessed by Warlock (without the extension).
 
-OBJ and MTL files are to be placed in \Steam\steamapps\common\TaleSpire\TaleSpire_CustomData
+OBJ, MTL and texture files are to be placed in \Steam\steamapps\common\TaleSpire\TaleSpire_CustomData\Minis\{ContentName}\
 
-This directory needs to be create manually, it does not exists as part of the game and the plugin does not create it.
-
-Texture files are to be placed in \Steam\steamapps\common\TaleSpire\TaleSpire_CustomData_Textures
-
-This directory needs to be create manually, it does not exists as part of the game and the plugin does not create it.
+The plugin ZIP contains the TaleSpire_CustomData folder (with a sample Test content) which needs to be moved to your TaleSpire
+game directoy. The core game does not contain this directory. It is used for added content by Lord Ashes plugins.
 
 Since the custom content files are only read when they are needed, the content can be added, removed or modified while TaleSpire
 is running. This allows easy testing of custom models.
