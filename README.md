@@ -2,7 +2,8 @@
 
 This unofficial TaleSpire plugin is for adding an unlimited number of custom minis.
 
-https://youtu.be/sRYln7Gc6Dg
+Demo Video: https://youtu.be/sRYln7Gc6Dg
+Adding Content Video: https://youtu.be/JJ0xJQUM01U
 
 ## Install
 
