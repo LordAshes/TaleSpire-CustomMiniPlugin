@@ -8,10 +8,13 @@ using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 
-namespace CustomMiniPlugin
+namespace LordAshes
 {
     class ChatHandler
     {
+        // Plugin guid
+        private string guid;
+
         // Directory for custom content
         private string dir = "";
 
@@ -29,8 +32,9 @@ namespace CustomMiniPlugin
         /// </summary>
         /// <param name="requestIdentifiers"></param>
         /// <param name="path"></param>
-        public ChatHandler(string path)
+        public ChatHandler(string guid, string path)
         {
+            this.guid = guid;
             this.dir = path;
             transformations.Clear();
         }
@@ -133,7 +137,7 @@ namespace CustomMiniPlugin
                         UnityEngine.Debug.Log("Chat Request: Id=" + id + ", Source=" + source);
 
                         // Check that indicated content file exits
-                        if (!System.IO.File.Exists(dir + source + "/"+source+".obj")) { return "Content '" + dir + source + ".obj" + "' does not exist"; }
+                        if (!System.IO.File.Exists(dir + "/Minis/"+source + "/"+source+".obj")) { return "Content '" + dir + "Minis/"+ source + ".obj" + "' does not exist"; }
                         // Find indicated asset
                         UnityEngine.Debug.Log("Searching for Chat Request Asset");
                         foreach (CreatureBoardAsset asset in CreaturePresenter.AllCreatureAssets.ToArray())
@@ -161,7 +165,7 @@ namespace CustomMiniPlugin
         private string LoadTransformationFile()
         {
             string loadFile = CampaignSessionManager.Info.CampaignId + "." + BoardSessionManager.CurrentBoardInfo.Id + ".cms";
-            if (System.IO.File.Exists(dir + loadFile))
+            if (System.IO.File.Exists(dir + "Config/" + guid + "/" + loadFile))
             {
                 string[] content = System.IO.File.ReadAllLines(dir + loadFile);
                 for (int i = 0; i < content.Length; i++)
@@ -197,9 +201,10 @@ namespace CustomMiniPlugin
         /// <param name="source">Path and name of the content file</param>
         private void LoadCustomContent(CreatureBoardAsset asset, string source)
         {
-            UnityEngine.Debug.Log("Customizing Mini '" + asset.Creature.Name + "' Using '" + dir+source + ".obj'...");
+            UnityEngine.Debug.Log("Customizing Mini '" + asset.Creature.Name + "' Using '" + dir+"Mini/"+source + ".obj'...");
             GameObject.Destroy(GameObject.Find("CustomContent:" + asset.Creature.CreatureId));
-            GameObject content = new OBJLoader().Load(dir+source+"/"+source+".obj");
+            UnityExtension.ShaderDetector.Reference(dir + "Minis/"+source + "/" + source + ".mtl");
+            GameObject content = new OBJLoader().Load(dir + "Minis/"+source+"/"+source+".obj");
             content.name = "CustomContent:" + asset.Creature.CreatureId;
             content.transform.position = asset.gameObject.transform.position;
             content.transform.SetParent(asset.BaseLoader.gameObject.transform);
@@ -214,10 +219,17 @@ namespace CustomMiniPlugin
             {
                 transformations.Add(asset.Creature.CreatureId.ToString(), source);
             }
-            System.IO.File.WriteAllText(dir + saveFile, "");
+
+            if(!System.IO.Directory.Exists(dir + "Config/" + guid))
+            {
+                UnityEngine.Debug.Log("Creating 'Config/"+guid+"' sub-folder for configs");
+                System.IO.Directory.CreateDirectory(dir + "Config/" + guid);
+            }
+
+            System.IO.File.WriteAllText(dir + "Config/"+guid+"/"+saveFile, "");
             foreach(KeyValuePair<string,string> entry in transformations)
             {
-                System.IO.File.AppendAllText(dir + saveFile, entry.Key+"="+entry.Value+"\r\n");
+                System.IO.File.AppendAllText(dir + "Config/" + guid + "/" + saveFile, entry.Key+"="+entry.Value+"\r\n");
             }
         }
     }

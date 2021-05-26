@@ -16,6 +16,7 @@ using Dummiesman;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityExtension;
 
 public class MTLLoader
 {
@@ -161,11 +162,24 @@ public class MTLLoader
                 string materialName = processedLine.Substring(7);
 
                 // Shader shader = Shader.Find("Standard (Specular setup)");
-                Shader shader = Shader.Find("Standard");
-                
+                Shader shader = ShaderDetector.Find();
+
                 var newMtl = new Material(shader) { name = materialName };
                 mtlDict[materialName] = newMtl;
                 currentMaterial = newMtl;
+
+                if (ShaderDetector.PropName("_MetallicGlossMap")!="")
+                {
+                    var mgMap = TryLoadTexture("..\\MetallicGlossMap.bmp");
+                    if(mgMap!=null)
+                    {
+                        currentMaterial.SetTexture(ShaderDetector.PropName("_MetallicGlassMap"), mgMap);
+                    }
+                    else
+                    {
+                        UnityEngine.Debug.Log("Problem loading the common 'MetallicGlossMap.bmp' file");
+                    }
+                }
 
                 continue;
             }
@@ -175,17 +189,16 @@ public class MTLLoader
                 continue;
 
             //diffuse color
-            if (splitLine[0] == "Kd" || splitLine[0] == "kd")
+            if ((splitLine[0] == "Kd" || splitLine[0] == "kd") && (ShaderDetector.PropName("_Color") != ""))
             {
-                var currentColor = currentMaterial.GetColor("_Color");
+                var currentColor = currentMaterial.GetColor(ShaderDetector.PropName("_Color"));
                 var kdColor = OBJLoaderHelper.ColorFromStrArray(splitLine);
-
-                currentMaterial.SetColor("_Color", new Color(kdColor.r, kdColor.g, kdColor.b, currentColor.a));
+                currentMaterial.SetColor(ShaderDetector.PropName("_Color"), new Color(kdColor.r, kdColor.g, kdColor.b, currentColor.a));
                 continue;
             }
 
             //diffuse map
-            if (splitLine[0] == "map_Kd" || splitLine[0] == "map_kd")
+            if ((splitLine[0] == "map_Kd" || splitLine[0] == "map_kd") && (ShaderDetector.PropName("_MainTex")!=""))
             {
                 string texturePath = GetTexPathFromMapStatement(processedLine, splitLine);
                 if(texturePath == null)
@@ -196,7 +209,7 @@ public class MTLLoader
                 UnityEngine.Debug.Log("Loading Texture '" + texturePath + "'");
 
                 var KdTexture = TryLoadTexture(texturePath);
-                currentMaterial.SetTexture("_MainTex", KdTexture);
+                currentMaterial.SetTexture(ShaderDetector.PropName("_MainTex"), KdTexture);
 
                 //set transparent mode if the texture has transparency
                 if(KdTexture != null && (KdTexture.format == TextureFormat.DXT5 || KdTexture.format == TextureFormat.ARGB32))
@@ -214,7 +227,7 @@ public class MTLLoader
             }
 
             //bump map
-            if (splitLine[0] == "map_Bump" || splitLine[0] == "map_bump")
+            if ((splitLine[0] == "map_Bump" || splitLine[0] == "map_bump") && (ShaderDetector.PropName("_BumpMap")!=""))
             {
                 string texturePath = GetTexPathFromMapStatement(processedLine, splitLine);
                 if(texturePath == null)
@@ -228,31 +241,31 @@ public class MTLLoader
                 float bumpScale = GetArgValue(splitLine, "-bm", 1.0f);
 
                 if (bumpTexture != null) {
-                    currentMaterial.SetTexture("_BumpMap", bumpTexture);
-                    currentMaterial.SetFloat("_BumpScale", bumpScale);
-                    currentMaterial.EnableKeyword("_NORMALMAP");
+                    currentMaterial.SetTexture(ShaderDetector.PropName("_BumpMap"), bumpTexture);
+                    if (ShaderDetector.PropName("_BumpMap") != "") { currentMaterial.SetFloat(ShaderDetector.PropName("_BumpScale"), bumpScale); }
+                    if (ShaderDetector.PropName("_NORMALMAP") != "") { currentMaterial.EnableKeyword(ShaderDetector.PropName("_NORMALMAP")); }
                 }
 
                 continue;
             }
 
             //specular color
-            if (splitLine[0] == "Ks" || splitLine[0] == "ks")
+            if ((splitLine[0] == "Ks" || splitLine[0] == "ks") && (ShaderDetector.PropName("_SpecColor")!=""))
             {
-                currentMaterial.SetColor("_SpecColor", OBJLoaderHelper.ColorFromStrArray(splitLine));
+                currentMaterial.SetColor(ShaderDetector.PropName("_SpecColor"), OBJLoaderHelper.ColorFromStrArray(splitLine));
                 continue;
             }
 
             //emission color
-            if (splitLine[0] == "Ka" || splitLine[0] == "ka")
+            if ((splitLine[0] == "Ka" || splitLine[0] == "ka") && (ShaderDetector.PropName("_EmissionColor")!=""))
             {
-                currentMaterial.SetColor("_EmissionColor", OBJLoaderHelper.ColorFromStrArray(splitLine, 0.05f));
-                currentMaterial.EnableKeyword("_EMISSION");
+                currentMaterial.SetColor(ShaderDetector.PropName("_EmissionColor"), OBJLoaderHelper.ColorFromStrArray(splitLine, 0.05f));
+                currentMaterial.EnableKeyword(ShaderDetector.PropName("_EMISSION"));
                 continue;
             }
 
             //emission map
-            if (splitLine[0] == "map_Ka" || splitLine[0] == "map_ka")
+            if ((splitLine[0] == "map_Ka" || splitLine[0] == "map_ka") && (ShaderDetector.PropName("_EmissionMap")!=""))
             {
                 string texturePath = GetTexPathFromMapStatement(processedLine, splitLine);
                 if(texturePath == null)
@@ -260,12 +273,12 @@ public class MTLLoader
                     continue; //invalid args or sth
                 }
 
-                currentMaterial.SetTexture("_EmissionMap", TryLoadTexture(texturePath));
+                currentMaterial.SetTexture(ShaderDetector.PropName("_EmissionMap"), TryLoadTexture(texturePath));
                 continue;
             }
 
             //alpha
-            if (splitLine[0] == "d" || splitLine[0] == "Tr")
+            if ((splitLine[0] == "d" || splitLine[0] == "Tr") && (ShaderDetector.PropName("_Color")!=""))
             {
                 float visibility = OBJLoaderHelper.FastFloatParse(splitLine[1]);
                 
@@ -275,10 +288,10 @@ public class MTLLoader
 
                 if(visibility < (1f - Mathf.Epsilon))
                 {
-                    var currentColor = currentMaterial.GetColor("_Color");
+                    var currentColor = currentMaterial.GetColor(ShaderDetector.PropName("_Color"));
 
                     currentColor.a = visibility;
-                    currentMaterial.SetColor("_Color", currentColor);
+                    currentMaterial.SetColor(ShaderDetector.PropName("_Color"), currentColor);
 
                     OBJLoaderHelper.EnableMaterialTransparency(currentMaterial);
                 }
@@ -286,11 +299,11 @@ public class MTLLoader
             }
 
             //glossiness
-            if (splitLine[0] == "Ns" || splitLine[0] == "ns")
+            if ((splitLine[0] == "Ns" || splitLine[0] == "ns") && (ShaderDetector.PropName("_Glossiness")!=""))
             {
                 float Ns = OBJLoaderHelper.FastFloatParse(splitLine[1]);
                 Ns = (Ns / 1000f);
-                currentMaterial.SetFloat("_Glossiness", Ns);
+                currentMaterial.SetFloat(ShaderDetector.PropName("_Glossiness"), Ns);
             }
         }
 
@@ -311,6 +324,16 @@ public class MTLLoader
         SearchPaths.Add(_objFileInfo.Directory.FullName); //add root path to search dir
 
         UnityEngine.Debug.Log("Reading Input '" + path + "'");
+
+        string strPath = System.IO.Path.GetDirectoryName(path);
+        string strFile = System.IO.Path.GetFileName(path);
+
+        UnityEngine.Debug.Log("Checking to see if there is a work around MTL file ("+strPath+"/"+strFile+")");
+        if(System.IO.File.Exists(strPath+"/$$$_"+strFile))
+        {
+            path = strPath + "/$$$_" + strFile;
+            UnityEngine.Debug.Log("Workaround MTL file found. Switching to using "+path);
+        }
 
         using (var fs = new FileStream(path, FileMode.Open))
         {
