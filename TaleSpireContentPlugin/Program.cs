@@ -12,26 +12,23 @@ using BepInEx.Configuration;
 
 namespace LordAshes
 {
-    [BepInPlugin(Guid, "Custom Mini Plug-In", Version)]
+    [BepInPlugin(Guid, Name, Version)]
     public class CustomMiniPlugin : BaseUnityPlugin
     {
         // Plugin info
+        public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "2.0.0.0";
+        public const string Version = "3.0.0.0";
 
         // Content directory
         private static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
 
         // Triggers
-        private ConfigEntry<KeyboardShortcut>[] triggers { get; set; } = new ConfigEntry<KeyboardShortcut>[1];
+        private ConfigEntry<KeyboardShortcut>[] triggers { get; set; } = new ConfigEntry<KeyboardShortcut>[6];
+        private ConfigEntry<string>[] animNames { get; set; } = new ConfigEntry<string>[5];
 
         // Chat handelr
         StatHandler statHandler = new StatHandler(Guid, dir);
-
-        // Initialization stage
-        int stageStart = -50;
-        int stage = 0;
-        int assetCount = 0;
 
         /// <summary>
         /// Function for initializing plugin
@@ -60,9 +57,18 @@ namespace LordAshes
 
             // Setup default trigger
             triggers[0] = Config.Bind("Hotkeys", "Transform Mini", new KeyboardShortcut(KeyCode.M, KeyCode.LeftControl));
+            triggers[1] = Config.Bind("Hotkeys", "Play Animation/Pose 1", new KeyboardShortcut(KeyCode.Alpha4, KeyCode.LeftControl));
+            triggers[2] = Config.Bind("Hotkeys", "Play Animation/Pose 2", new KeyboardShortcut(KeyCode.Alpha5, KeyCode.LeftControl));
+            triggers[3] = Config.Bind("Hotkeys", "Play Animation/Pose 3", new KeyboardShortcut(KeyCode.Alpha6, KeyCode.LeftControl));
+            triggers[4] = Config.Bind("Hotkeys", "Play Animation/Pose 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.LeftControl));
+            triggers[5] = Config.Bind("Hotkeys", "Play Animation/Pose 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.LeftControl));
 
-            // Setup initial stage
-            stage = stageStart;
+            // Setup default animation names
+            animNames[0] = Config.Bind("Animation", "Animation/Pose 1 Name", "Idle");
+            animNames[1] = Config.Bind("Animation", "Animation/Pose 2 Name", "Ready");
+            animNames[2] = Config.Bind("Animation", "Animation/Pose 3 Name", "Attack");
+            animNames[3] = Config.Bind("Animation", "Animation/Pose 4 Name", "Dance");
+            animNames[4] = Config.Bind("Animation", "Animation/Pose 5 Name", "Die");
         }
 
         /// <summary>
@@ -71,103 +77,78 @@ namespace LordAshes
         /// </summary>
         void Update()
         {
-            if (IsBoardLoaded())
+            if(StateDetection.Ready(ref statHandler))
             {
-                //
-                // Stage 10: Ready
-                //
-                if (stage == 10) 
-                {
-                    statHandler.CheckStatRequests();
-                    statHandler.SyncStealthMode();
-                }
-                //
-                // Stage 2+: Waiting To Process SystemMessage
-                //
-                else if (stage>=2)
-                {
-                    stage++;
-                }
-                //
-                // Stage 1: Check Minis For MeshFilter
-                //
-                else if (stage == 1)
-                {
-                    Debug.Log("Check to see if minis' mesh can be manipulated");
-                    bool loaded = true;
-                    foreach (CreatureBoardAsset asset in CreaturePresenter.AllCreatureAssets)
-                    {
-                        if (asset.CreatureLoader.LoadedAsset == null)
-                        {
-                            // Debug.Log("Asset " + asset.name + " has a null CreatureLoader");
-                            loaded = false; break;
-                        }
-                        else
-                        {
-                            if (asset.CreatureLoader.LoadedAsset.GetComponent<MeshFilter>() == null)
-                            {
-                                // Debug.Log("Asset " + asset.name + " has a null CreatureLoader MeshFilter");
-                                loaded = false; break;
-                            }
-                            else
-                            {
-                                if (asset.CreatureLoader.LoadedAsset.GetComponent<MeshFilter>().mesh == null)
-                                {
-                                    // Debug.Log("Asset " + asset.name + " has a null CreatureLoader MeshFilter mesh");
-                                    loaded = false; break;
-                                }
-                                else
-                                {
-                                    // Debug.Log("Asset " + asset.name + " is ready");
-                                }
-                            }
-                        }
-                    }
-                    if (loaded)
-                    {
-                        Debug.Log("Minis mesh test passed. Processing transformations...");
-                        statHandler.Reset();
-                        SystemMessage.DisplayInfoText("Please Be Patient...\r\nLoading Mini Transformations");
-                        stage = 2;
-                    }
-                }
-                //
-                // Stage <=0: Mini Loaded Detection
-                //
-                else if (stage <= 0)
-                {
-                    if (CreaturePresenter.AllCreatureAssets.Count == assetCount)
-                    { 
-                        // Debug.Log("Creature Count No Change (" + assetCount + "): " + stage); 
-                        stage++; 
-                    } 
-                    else 
-                    { 
-                        assetCount = CreaturePresenter.AllCreatureAssets.Count;
-                        Debug.Log("Creature Count Change (" + assetCount + ") @ Stage " + stage);
-                        stage = stageStart; 
-                    }
-                }
+                statHandler.CheckStatRequests();
+                statHandler.SyncStealthMode();
 
                 // Check for Transformation 
-                if (triggers[0].Value.IsUp())
+                if (StrictKeyCheck(triggers[0].Value))
                 {
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Make me a: ", "OK", (s) => { statHandler.SetTransformationRequest(LocalClient.SelectedCreatureId, s); }, null, "Cancel", null, "");
                 }
-            }
-            //
-            // Board is re-loading, request startup seqeunce
-            //
-            else if (stage >= 0)
-            {
-                Debug.Log("Board Is Re-loading...");
-                stage = stageStart;
+
+                for(int a=1; a<=animNames.Length; a++)
+                {
+                    if(StrictKeyCheck(triggers[a].Value))
+                    {
+                        Debug.Log("Request Animation/Pose " + a + "...");
+                        CreatureBoardAsset asset;
+                        CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out asset);
+                        if(asset!=null)
+                        {
+                            GameObject go = GameObject.Find("CustomContent:" + asset.Creature.CreatureId);
+                            if (go != null)
+                            {
+                                Animation anim = go.GetComponent<Animation>();
+                                if (anim != null)
+                                {
+                                    if (anim.isPlaying)
+                                    {
+                                        Debug.Log("Stopping Animations On Mini");
+                                        anim.Stop();
+                                    }
+                                    else
+                                    {
+                                        Debug.Log("Activating Animation '" + animNames[a - 1].Value + "' On Mini");
+                                        try
+                                        {
+                                            anim.Play(animNames[a - 1].Value);
+                                        }
+                                        catch (System.Exception)
+                                        {
+                                            Debug.Log("Creature '" + asset.Creature.Name + "' does not have animation '" + animNames[a - 1].Value + "'");
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    Debug.Log("Creature '" + asset.Creature.Name + "' does not have animations");
+                                }
+                            }
+                            else
+                            {
+                                Debug.Log("Creature '" + asset.Creature.Name + "' does not have animations");
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        private bool IsBoardLoaded()
+        /// <summary>
+        /// Method to properly evaluate shortcut keys. 
+        /// </summary>
+        /// <param name="check"></param>
+        /// <returns></returns>
+        public bool StrictKeyCheck(KeyboardShortcut check)
         {
-            return (CameraController.HasInstance && BoardSessionManager.HasInstance && BoardSessionManager.HasBoardAndIsInNominalState && !BoardSessionManager.IsLoading);
+            if(!check.IsUp()) { return false; }
+            foreach (KeyCode modifier in new KeyCode[]{KeyCode.LeftAlt, KeyCode.RightAlt, KeyCode.LeftControl, KeyCode.RightControl, KeyCode.LeftShift, KeyCode.RightShift })
+            {
+                if (Input.GetKey(modifier) != check.Modifiers.Contains(modifier)) { return false; }
+            }
+            return true;
         }
     }
 }

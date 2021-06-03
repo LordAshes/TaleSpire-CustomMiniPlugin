@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace LordAshes
 {
-    class StatHandler
+    public class StatHandler
     {
         // Plugin guid
         private string guid;
@@ -61,7 +61,7 @@ namespace LordAshes
                         transformations[asset.Creature.CreatureId] = transformName;
 
                         // Process request
-                        LoadCustomContent(asset, dir + "Minis/" + transformName + "/" + transformName + ".obj");
+                        LoadCustomContent(asset, dir + "Minis/" + transformName + "/" + transformName);
 
                         // Reduce stress on system by processing one transformation per cycle
                         break;
@@ -132,11 +132,34 @@ namespace LordAshes
             try
             {
                 UnityEngine.Debug.Log("Customizing Mini '" + asset.Creature.Name + "' Using '" + source + "'...");
+
+                // Look up the content name to see if the actual file has an extenion or not
+                source = System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(source), System.IO.Path.GetFileNameWithoutExtension(source) + "*.*")[0];
+
                 if (System.IO.File.Exists(source))
                 {
                     GameObject.Destroy(GameObject.Find("CustomContent:" + asset.Creature.CreatureId));
-                    UnityExtension.ShaderDetector.Reference(System.IO.Path.GetDirectoryName(source) + "/" + System.IO.Path.GetFileNameWithoutExtension(source) + ".mtl");
-                    GameObject content = new OBJLoader().Load(source);
+
+                    string contentType = System.IO.Path.GetExtension(source).ToUpper();
+
+                    GameObject content = null;
+                    switch (contentType)
+                    {
+                        case "": // AssetBundle Source
+                            UnityEngine.Debug.Log("Using AssetBundle Loader");
+                            AssetBundle assetBundle = AssetBundle.LoadFromFile(source);
+                            content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(System.IO.Path.GetFileNameWithoutExtension(source)));
+                            break;
+                        case "OBJ": // OBJ/MTL Source
+                            UnityEngine.Debug.Log("Using OBJ/MTL Loader");
+                            UnityExtension.ShaderDetector.Reference(System.IO.Path.GetDirectoryName(source) + "/" + System.IO.Path.GetFileNameWithoutExtension(source) + ".mtl");
+                            content = new OBJLoader().Load(source);
+                            break;
+                        default: // Unrecognized Source
+                            Debug.Log("Content Type '" + contentType + "' is not supported. Use OBJ/MTL or FBX.");
+                            break;
+                    }
+
                     content.name = "CustomContent:" + asset.Creature.CreatureId;
                     content.transform.position = asset.gameObject.transform.position;
                     content.transform.rotation = asset.BaseLoader.gameObject.transform.rotation;
