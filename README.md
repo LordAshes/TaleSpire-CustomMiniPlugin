@@ -1,15 +1,24 @@
 # Custom Mini Plugin
 
 This unofficial TaleSpire plugin is for adding an unlimited number of custom minis.
+Re-applies transformation automatically on re-load and requires no blank base.
+Now supports assetBundles and assetBundle animations.
 
-Demo Video: https://youtu.be/sRYln7Gc6Dg
+Somewhat Outdated Demo Video: https://youtu.be/sRYln7Gc6Dg
 
-Adding Content Video: https://youtu.be/JJ0xJQUM01U
+Adding OBJ/MTL Content Video: https://youtu.be/JJ0xJQUM01U
 
-Please note that the Adding Content Video is currently out of date. Most of the video is still applicable but the content needs to use a Minis sub-folder (see info below) and PNG and JPG texture can now be used.
+(Adding AssetBundle content is very similar to adding OBJ/MTL content)
 
 ## Change Log
 
+3.0.0: Added assetBundle support
+3.0.0: Added animation support
+2.0.0: Blank base is no longer needed
+2.0.0: Transformation are automatically restored on loaded
+2.0.0: Trasformation triggered using CTRL+M (can be changed in R2ModMan)
+2.0.0: Moved from Chat distribution to Name distribution
+1.6.1: Exposed Plugin Guid to allow it to be marked as a dependency
 1.6.0: OBJ, MTL and texture files expected in a minis folder and then a sub-folder named after the asset (e.g. TaleSpire_CustomData\Minis\Wizard\Wizard.obj)
 1.6.0: Added fake JPG and PNG support. Asset can use JPG/PNG textures which the plugin automatically converts to BMPs.
 1.5.0: Fixed shader bug. Content uses the Standard shader (not the TaleSpire\Creature shader).
@@ -18,30 +27,28 @@ Please note that the Adding Content Video is currently out of date. Most of the 
 
 ## Install
 
-Go to the releases folder and download the latest and extract to the contents of your TaleSpire game folder.
+Install using R2ModMan or similar and place custom contents (OBJ/MTL and texture files or AssetBundles) in TaleSpire_CustomData\Minis\{ContentName}\
 
 ## Usage
 
-Best results are gained by using a small existing mini or by using the content swap technique to create an empty content mini.
+Add a mini to the board and select it. To transform the mini, press the Transform shotcut (CTRL+M by default but can be changed in
+R2ModMan configuration for the plugin). Enter the name of the content to which the mini should be transformed. Ensure that the entered
+content name corresponds to an OBJ and MTL file or a assetBundle file in the location TaleSpire_CustomData\Minis\{ContentName}\
 
-Add a mini to the board, pick it up and drop it. This will copy the mini's id to the clipboard along with the chat request
-command for transforming the mini. Open the chat bar (by pressing enter) and paste in clipboard contents. This will paste in
-an ugly looking code ending in "Make me a ". Type the name of the custom content file (without the path or the OBJ suffix) and
-press ENTER. The corresponding mini will say "Make me a " followed by the content name and the transformation will occur.
+For example:
 
-Transformations are not automatically loaded when the campaign and board are loaded but they are stored automatically in a
-campaign and board specific file which can be easily retrieved...
+TaleSpire_CustomData\Minis\Wizard01\Wizard01.OBJ
+TaleSpire_CustomData\Minis\Wizard01\Wizard01.MTL
 
-Open the chat bar and type: ! TRANSFORM
+or for an assetBundle:
 
-This will apply all the transformation for that campaign board. This way the GM can set up all the transformations during build
-time and then when the board is loaded, the GM just needs to issue the ! TRANSFORM chat request and the transformations will be
-applied on the GM side and on all players' sides.
+TaleSpire_CustomData\Minis\Wizard01\Wizard01
 
-Once a board is no longer going to be used, the corresponding transformation file can be deleted by issuing the following command
-in the chat bar: ! DELETE
+Transformations are automatically loaded when the board is loaded as long as the client has the corresponding content files.
 
 ## Adding Custom Content
+
+### OBJ/MTL Content
 
 Each piece of custom content needs to consist of a OBJ file and MTL file. It can, optionally also contain texture files, which
 should be in BMP format. PNG and JPG can now be used but will be automatically converted to BMP by the plugin. References to files
@@ -52,40 +59,34 @@ accessed by Warlock (without the extension).
 
 OBJ, MTL and texture files are to be placed in \Steam\steamapps\common\TaleSpire\TaleSpire_CustomData\Minis\{ContentName}\
 
-The plugin ZIP contains the TaleSpire_CustomData folder (with a sample Test content) which needs to be moved to your TaleSpire
-game directoy. The core game does not contain this directory. It is used for added content by Lord Ashes plugins.
-
 Since the custom content files are only read when they are needed, the content can be added, removed or modified while TaleSpire
 is running. This allows easy testing of custom models.
 
-## Ideal Base
+### AssetBundle Content
 
-In order for the plugin to work best, a blank base is needed. For users who do not want to create their own blank base,
-a blank base file is included which turns the TaleSpire Christmas Mimic into a blank base. There are two files that need
-to be applied in order to get the blank base. Both are included in the plugin ZIP file.
+Place the assetBundle file (with no extension) into a folder with the same name as the content, as in:
 
-Place "aTBvbnNj" in the ""\Steam\steamapps\common\TaleSpire\Taleweaver" folder.
-Place "char_mimic02_1606620485" in the "\Steam\steamapps\common\TaleSpire\Taleweaver\Assets" folder.
+\Steam\steamapps\common\TaleSpire\TaleSpire_CustomData\Minis\{ContentName}\
 
-Both of these files should already exist. Just replace them. You can back up the original files if you wish but Steam can
-always revert the files back to their original if needed. 
+The folder, assetBundle file and the content within it should all have the same name. For example:
 
-Once these files are applied and TaleSpire is restarted, you should find the Blank Base under Creatures | Monsterous.
+\Steam\steamapps\common\TaleSpire\TaleSpire_CustomData\Minis\Wizard01\Wizard01 should contain a Wizard01 prefab.
 
-## How to Compile / Modify
+## Animations & Poses
 
-Open ```CustomMiniPlaugin.sln``` in Visual Studio.
+AssetBundles can contain animations. Custom Mini Plugin allows triggering of up to 5 different animations if the asset contains
+them. It should be noted that while the names of the animations are configurable (in the R2ModMon config for the plugin) they
+are common to all assets. For example, if the animation names are configured for Idle, Ready, Attack, Dance and Die then these
+animation names are use for all assets. They shortcut keys for triggering the animations are configurable but default to
+(LEFT)CTRL+4 to (LEFT)CTRL+8. The triggering keys work like a toggle. If the animation is not playing, it will start. If an
+animation is already playing it will be stopped. If an asset does not have the corresponding animation, no animation is played.
 
-You will need to add references to:
+Poses can be implemented by short (typically one frame) animations. It is highly recommended to add a default or Idle pose
+because when animations are stopped the asset is not returned back to an idle or non-animated state. The asset remains in the
+position that the asset was in when the animation was stopped. By having an idle pose, the asset can be returned to this pose
+(manually).
 
-```
-* BepInEx.dll  (Download from the BepInEx project.)
-* Bouncyrock.TaleSpire.Runtime (found in Steam\steamapps\common\TaleSpire\TaleSpire_Data\Managed)
-* UnityEngine.dll
-* UnityEngine.CoreModule.dll
-* UnityEngine.InputLegacyModule.dll 
-```
+## Limitations
 
-Build the project.
-
-Browse to the newly created ```bin/Debug``` or ```bin/Release``` folders and copy the ```CharacterViewPlugin.dll``` to ```Steam\steamapps\common\TaleSpire\BepInEx\plugins```
+The fly and some of the emotions don't work with the Custom Mini Plugin. Fly will show the fly stand but the mini will disapper while
+fly mode is on. Some of the Emotions do not animate.
