@@ -18,13 +18,14 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "3.0.0.0";
+        public const string Version = "3.1.2.0";
 
         // Content directory
         private static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
 
         // Triggers
-        private ConfigEntry<KeyboardShortcut>[] triggers { get; set; } = new ConfigEntry<KeyboardShortcut>[6];
+        private ConfigEntry<KeyboardShortcut>[] actionTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[2];
+        private ConfigEntry<KeyboardShortcut>[] animTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[5];
         private ConfigEntry<string>[] animNames { get; set; } = new ConfigEntry<string>[5];
 
         // Chat handelr
@@ -56,12 +57,14 @@ namespace LordAshes
             }
 
             // Setup default trigger
-            triggers[0] = Config.Bind("Hotkeys", "Transform Mini", new KeyboardShortcut(KeyCode.M, KeyCode.LeftControl));
-            triggers[1] = Config.Bind("Hotkeys", "Play Animation/Pose 1", new KeyboardShortcut(KeyCode.Alpha4, KeyCode.LeftControl));
-            triggers[2] = Config.Bind("Hotkeys", "Play Animation/Pose 2", new KeyboardShortcut(KeyCode.Alpha5, KeyCode.LeftControl));
-            triggers[3] = Config.Bind("Hotkeys", "Play Animation/Pose 3", new KeyboardShortcut(KeyCode.Alpha6, KeyCode.LeftControl));
-            triggers[4] = Config.Bind("Hotkeys", "Play Animation/Pose 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.LeftControl));
-            triggers[5] = Config.Bind("Hotkeys", "Play Animation/Pose 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.LeftControl));
+            actionTriggers[0] = Config.Bind("Hotkeys", "Transform Mini", new KeyboardShortcut(KeyCode.M, KeyCode.LeftControl));
+            actionTriggers[1] = Config.Bind("Hotkeys", "Add Effect", new KeyboardShortcut(KeyCode.E, KeyCode.LeftControl));
+
+            animTriggers[0] = Config.Bind("Hotkeys", "Play Animation/Pose 1", new KeyboardShortcut(KeyCode.Alpha4, KeyCode.LeftControl));
+            animTriggers[1] = Config.Bind("Hotkeys", "Play Animation/Pose 2", new KeyboardShortcut(KeyCode.Alpha5, KeyCode.LeftControl));
+            animTriggers[2] = Config.Bind("Hotkeys", "Play Animation/Pose 3", new KeyboardShortcut(KeyCode.Alpha6, KeyCode.LeftControl));
+            animTriggers[3] = Config.Bind("Hotkeys", "Play Animation/Pose 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.LeftControl));
+            animTriggers[4] = Config.Bind("Hotkeys", "Play Animation/Pose 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.LeftControl));
 
             // Setup default animation names
             animNames[0] = Config.Bind("Animation", "Animation/Pose 1 Name", "Idle");
@@ -83,16 +86,27 @@ namespace LordAshes
                 statHandler.SyncStealthMode();
 
                 // Check for Transformation 
-                if (StrictKeyCheck(triggers[0].Value))
+                if (StrictKeyCheck(actionTriggers[0].Value))
                 {
-                    SystemMessage.AskForTextInput("Custom Mini Plugin", "Make me a: ", "OK", (s) => { statHandler.SetTransformationRequest(LocalClient.SelectedCreatureId, s); }, null, "Cancel", null, "");
+                    SystemMessage.AskForTextInput(  "Custom Mini Plugin", "Make me a: ", "OK", 
+                                                    (s) => { statHandler.SetTransformationRequest(LocalClient.SelectedCreatureId, s); }, null, 
+                                                    "Remove", () => { statHandler.SetTransformationRequest(LocalClient.SelectedCreatureId, ""); },
+                                                    "");
                 }
 
-                for(int a=1; a<=animNames.Length; a++)
+                if (StrictKeyCheck(actionTriggers[1].Value))
                 {
-                    if(StrictKeyCheck(triggers[a].Value))
+                    SystemMessage.AskForTextInput("Custom Mini Plugin", "Add effect: ", "OK",
+                                                    (s) => { statHandler.SetTransformationRequest(LocalClient.SelectedCreatureId, "#"+s); }, null,
+                                                    "Remove", () => { statHandler.SetTransformationRequest(LocalClient.SelectedCreatureId, "#"); },
+                                                    "");
+                }
+
+                for (int a=0; a<animNames.Length; a++)
+                {
+                    if(StrictKeyCheck(animTriggers[a].Value))
                     {
-                        Debug.Log("Request Animation/Pose " + a + "...");
+                        Debug.Log("Request Animation/Pose " + (a+1) + "...");
                         CreatureBoardAsset asset;
                         CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out asset);
                         if(asset!=null)
@@ -110,14 +124,14 @@ namespace LordAshes
                                     }
                                     else
                                     {
-                                        Debug.Log("Activating Animation '" + animNames[a - 1].Value + "' On Mini");
+                                        Debug.Log("Activating Animation '" + animNames[a].Value + "' On Mini");
                                         try
                                         {
-                                            anim.Play(animNames[a - 1].Value);
+                                            anim.Play(animNames[a].Value);
                                         }
                                         catch (System.Exception)
                                         {
-                                            Debug.Log("Creature '" + asset.Creature.Name + "' does not have animation '" + animNames[a - 1].Value + "'");
+                                            Debug.Log("Creature '" + asset.Creature.Name + "' does not have animation '" + animNames[a].Value + "'");
                                         }
                                     }
                                 }

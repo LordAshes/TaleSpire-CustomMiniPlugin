@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEditor;
 
 namespace LordAshes
 {
@@ -133,40 +134,76 @@ namespace LordAshes
             {
                 UnityEngine.Debug.Log("Customizing Mini '" + asset.Creature.Name + "' Using '" + source + "'...");
 
+                // Effects are prefixed by # tag
+                bool effect = (source.IndexOf("#") > -1);
+                source = source.Replace("#", "");
+                string prefix = (effect) ? "CustomEffect:" : "CustomContent:";
+                Debug.Log("Effect = " + effect);
+
                 // Look up the content name to see if the actual file has an extenion or not
-                source = System.IO.Directory.GetFiles(System.IO.Path.GetDirectoryName(source), System.IO.Path.GetFileNameWithoutExtension(source) + "*.*")[0];
-
-                if (System.IO.File.Exists(source))
+                if (System.IO.Path.GetFileNameWithoutExtension(source) != "")
                 {
-                    GameObject.Destroy(GameObject.Find("CustomContent:" + asset.Creature.CreatureId));
-
-                    string contentType = System.IO.Path.GetExtension(source).ToUpper();
-
-                    GameObject content = null;
-                    switch (contentType)
+                    // Obtain file name of the content
+                    if(System.IO.File.Exists(source))
                     {
-                        case "": // AssetBundle Source
-                            UnityEngine.Debug.Log("Using AssetBundle Loader");
-                            AssetBundle assetBundle = AssetBundle.LoadFromFile(source);
-                            content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(System.IO.Path.GetFileNameWithoutExtension(source)));
-                            break;
-                        case "OBJ": // OBJ/MTL Source
-                            UnityEngine.Debug.Log("Using OBJ/MTL Loader");
-                            UnityExtension.ShaderDetector.Reference(System.IO.Path.GetDirectoryName(source) + "/" + System.IO.Path.GetFileNameWithoutExtension(source) + ".mtl");
-                            content = new OBJLoader().Load(source);
-                            break;
-                        default: // Unrecognized Source
-                            Debug.Log("Content Type '" + contentType + "' is not supported. Use OBJ/MTL or FBX.");
-                            break;
+                        // Asset Bundle
                     }
+                    else if (System.IO.File.Exists(source+".OBJ"))
+                    {
+                        // OBJ File
+                        source = source + ".OBJ";
+                    }
+                }
+                else
+                {
+                    // Source is blank meaning this is a remove request
+                    source = "";
+                }
 
-                    content.name = "CustomContent:" + asset.Creature.CreatureId;
-                    content.transform.position = asset.gameObject.transform.position;
-                    content.transform.rotation = asset.BaseLoader.gameObject.transform.rotation;
-                    content.transform.SetParent(asset.BaseLoader.gameObject.transform);
+                if (source=="" || System.IO.File.Exists(source))
+                {
+                    Debug.Log("Destroying Game Object '" + prefix + asset.Creature.CreatureId + "'");
+                    GameObject.Destroy(GameObject.Find(prefix + asset.Creature.CreatureId));
 
-                    UnityEngine.Debug.Log("Removing Core Mini Meshes");
-                    asset.CreatureLoader.LoadedAsset.GetComponent<MeshFilter>().mesh.triangles = new int[0];
+                    if (source != "")
+                    {
+                        GameObject content = null;
+                        // Determine which type of content it is 
+                        switch (System.IO.Path.GetExtension(source).ToUpper())
+                        {
+                            case "": // AssetBundle Source
+                                UnityEngine.Debug.Log("Using AssetBundle Loader");
+                                string assetBundleName = System.IO.Path.GetFileNameWithoutExtension(source);
+                                AssetBundle assetBundle = null;
+                                foreach (AssetBundle ab in AssetBundle.GetAllLoadedAssetBundles())
+                                {
+                                    // Debug.Log("Checking Existing AssetBundles: Found '" + ab.name + "'. Seeking '"+assetBundleName+"'");
+                                    if (ab.name == assetBundleName) { UnityEngine.Debug.Log("AssetBundle Is Already Loaded. Reusing."); assetBundle = ab; break; }
+                                }
+                                if (assetBundle == null) { UnityEngine.Debug.Log("AssetBundle Is Not Already Loaded. Loading."); assetBundle = AssetBundle.LoadFromFile(source); }
+                                content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(System.IO.Path.GetFileNameWithoutExtension(source)));
+                                break;
+                            case ".OBJ": // OBJ/MTL Source
+                                UnityEngine.Debug.Log("Using OBJ/MTL Loader");
+                                UnityExtension.ShaderDetector.Reference(System.IO.Path.GetDirectoryName(source) + "/" + System.IO.Path.GetFileNameWithoutExtension(source) + ".mtl");
+                                content = new OBJLoader().Load(source);
+                                break;
+                            default: // Unrecognized Source
+                                Debug.Log("Content Type '" + System.IO.Path.GetExtension(source).ToUpper() + "' is not supported. Use OBJ/MTL or FBX.");
+                                break;
+                        }
+
+                        content.name = prefix + asset.Creature.CreatureId;
+                        content.transform.position = asset.gameObject.transform.position;
+                        content.transform.rotation = asset.BaseLoader.gameObject.transform.rotation;
+                        content.transform.SetParent(asset.BaseLoader.gameObject.transform);
+
+                        if (!effect)
+                        {
+                            UnityEngine.Debug.Log("Removing Core Mini Meshes");
+                            asset.CreatureLoader.LoadedAsset.GetComponent<MeshFilter>().mesh.triangles = new int[0];
+                        }
+                    }
                 }
                 else
                 {
