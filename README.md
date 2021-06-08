@@ -13,24 +13,43 @@ Adding OBJ/MTL Content Video: https://youtu.be/JJ0xJQUM01U
 ## Change Log
 
 4.0.0: Fixed Fly and Emotes.
+
 4.0.0: Uses Stat Messaging for synchronization of the transforms for higher compatability with other plugins. 
+
 4.0.0: Major overhaul to actually replace the core mini mesh instead of attaching a game object to it.
+
 3.2.0: Exposed StatHandler and provided callback for content load fails to allow plugin to be used as a dependency plugin.
+
 3.1.1: Bug fix and readme correction. Effect are triggered with Left CTRL + E (not T).
+
 3.1.0: Added effects support (Left CTRL + E). Like mini transformation but does not delete the character mesh.
+
 3.1.0: Added remove buttons to the transformation dialogs to remove transformations.
+
 3.1.0: Fixed issue with OBJ/MTL content
+
 3.0.0: Added assetBundle support
+
 3.0.0: Added animation support
+
 2.0.0: Blank base is no longer needed
+
 2.0.0: Transformation are automatically restored on loaded
+
 2.0.0: Trasformation triggered using CTRL+M (can be changed in R2ModMan)
+
 2.0.0: Moved from Chat distribution to Name distribution
+
 1.6.1: Exposed Plugin Guid to allow it to be marked as a dependency
+
 1.6.0: OBJ, MTL and texture files expected in a minis folder and then a sub-folder named after the asset (e.g. TaleSpire_CustomData\Minis\Wizard\Wizard.obj)
+
 1.6.0: Added fake JPG and PNG support. Asset can use JPG/PNG textures which the plugin automatically converts to BMPs.
+
 1.5.0: Fixed shader bug. Content uses the Standard shader (not the TaleSpire\Creature shader).
+
 1.5.0: OBJ, MTL and texture files expected in a sub folder named after the asset (e.g. TaleSpire_CustomData\Wizard\Wizard.obj)
+
 1.5.0: Includes the TaleSpire_CustomData folder in ZIP along with a Test content
 
 ## Install
