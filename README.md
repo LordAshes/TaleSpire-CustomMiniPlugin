@@ -12,6 +12,14 @@ Adding OBJ/MTL Content Video: https://youtu.be/JJ0xJQUM01U
 
 ## Change Log
 
+4.0.0: Fixed Fly and Emotes.
+4.0.0: Uses Stat Messaging for synchronization of the transforms for higher compatability with other plugins. 
+4.0.0: Major overhaul to actually replace the core mini mesh instead of attaching a game object to it.
+3.2.0: Exposed StatHandler and provided callback for content load fails to allow plugin to be used as a dependency plugin.
+3.1.1: Bug fix and readme correction. Effect are triggered with Left CTRL + E (not T).
+3.1.0: Added effects support (Left CTRL + E). Like mini transformation but does not delete the character mesh.
+3.1.0: Added remove buttons to the transformation dialogs to remove transformations.
+3.1.0: Fixed issue with OBJ/MTL content
 3.0.0: Added assetBundle support
 3.0.0: Added animation support
 2.0.0: Blank base is no longer needed
@@ -31,7 +39,9 @@ Install using R2ModMan or similar and place custom contents (OBJ/MTL and texture
 
 ## Usage
 
-Add a mini to the board and select it. To transform the mini, press the Transform shotcut (CTRL+M by default but can be changed in
+### Transforming Minis
+
+Add a mini to the board and select it. To transform the mini, press the Transform shotcut (Left CTRL+M by default but can be changed in
 R2ModMan configuration for the plugin). Enter the name of the content to which the mini should be transformed. Ensure that the entered
 content name corresponds to an OBJ and MTL file or a assetBundle file in the location TaleSpire_CustomData\Minis\{ContentName}\
 
@@ -45,6 +55,20 @@ or for an assetBundle:
 TaleSpire_CustomData\Minis\Wizard01\Wizard01
 
 Transformations are automatically loaded when the board is loaded as long as the client has the corresponding content files.
+
+### Initiating Effect
+
+Each mini can have one effect active at a time. This process works identically to the Mini Transformation process except it
+is done to a separate Effects game object and does not remove the mesh of the original mini nor the Mini Transformation object.
+Pressing the Effects shortcut (Left CTRL + E by default but can be changed in the R2ModMan config) brings up a similar dialog
+to the Mini Transformation. Enter the name of the (effect) content as usual. It will be applied to the mini while maintaining
+the mini's appearance. This is ideal for adding effects which are tied to the caster's position.
+
+### Removing Effects
+
+The transformation dialogs now has a Remove button which will remove mini transformations and effects (depending on which
+dialog is used). However, please note that the Remove for Mini Transformation is less useful since the original mini mesh
+is not restored.
 
 ## Adding Custom Content
 
@@ -88,5 +112,4 @@ position that the asset was in when the animation was stopped. By having an idle
 
 ## Limitations
 
-The fly and some of the emotions don't work with the Custom Mini Plugin. Fly will show the fly stand but the mini will disapper while
-fly mode is on. Some of the Emotions do not animate.
+The height bar still does not hide transformed minis. Workaround: Activate stealth.
