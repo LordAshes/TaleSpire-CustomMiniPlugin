@@ -323,18 +323,6 @@ public class MTLLoader
         _objFileInfo = new FileInfo(path); //get file info
         SearchPaths.Add(_objFileInfo.Directory.FullName); //add root path to search dir
 
-        UnityEngine.Debug.Log("Reading Input '" + path + "'");
-
-        string strPath = System.IO.Path.GetDirectoryName(path);
-        string strFile = System.IO.Path.GetFileName(path);
-
-        UnityEngine.Debug.Log("Checking to see if there is a work around MTL file ("+strPath+"/"+strFile+")");
-        if(System.IO.File.Exists(strPath+"/$$$_"+strFile))
-        {
-            path = strPath + "/$$$_" + strFile;
-            UnityEngine.Debug.Log("Workaround MTL file found. Switching to using "+path);
-        }
-
         using (var fs = new FileStream(path, FileMode.Open))
         {
             return Load(fs); //actually load
