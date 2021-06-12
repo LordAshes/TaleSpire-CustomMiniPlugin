@@ -3,6 +3,8 @@ using System;
 using System.Linq;
 using UnityEngine;
 using BepInEx;
+using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace LordAshes
 {
@@ -33,59 +35,24 @@ namespace LordAshes
             /// <param name="changes">Array of changes detected by the Stat Messaging plugin</param>
             public void Request(StatMessaging.Change[] changes)
             {
+                Debug.Log("Stat Messaging Request(s)");
                 // Process all changes
-                foreach(StatMessaging.Change change in changes)
+                foreach (StatMessaging.Change change in changes)
                 {
-                    // If the change is not for the CustomMiniPlugin key then ignore it
-                    if (change.key!= "CustomMiniPlugin") { continue; }
+                    Debug.Log("Stat Messaging Request: Cid: "+change.cid+", Key: "+change.key+", Type: "+change.action+", Value: "+change.value+", Previous: "+change.previous);
                     // Find a reference to the indicated mini
                     CreatureBoardAsset asset = null;
                     CreaturePresenter.TryGetAsset(change.cid, out asset);
                     if (asset != null)
                     {
                         // Process the request (since remove has a blank value this will trigger mesh removal)
+                        Debug.Log("Transfromation Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
                         LoadCustomContent(asset, dir+"Minis/"+change.value+"/"+change.value);
                     }
-                }
-            }
-
-            /// <summary>
-            /// Method to make character Stat3 requests
-            /// </summary>
-            /// <param name="asset">Asset making the request</param>
-            /// <param name="content">Name of the contents</param>
-            public void SetTransformationRequest(CreatureGuid cid, string content)
-            {
-                StatMessaging.SetInfo(cid, "CustomMiniPlugin", content);
-            }
-
-            /// <summary>
-            /// Method to sync the transformation mesh with the character's stealth mode setting
-            /// </summary>
-            public void SyncStealthMode()
-            {
-                foreach (CreatureBoardAsset asset in CreaturePresenter.AllCreatureAssets.ToArray())
-                {
-                    try
+                    else
                     {
-                        if (asset.Creature.IsExplicitlyHidden)
-                        {
-                            if (asset.CreatureLoader.LoadedAsset.GetComponent<MeshRenderer>().enabled)
-                            {
-                                asset.CreatureLoader.LoadedAsset.GetComponent<MeshRenderer>().enabled = false;
-                                asset.CreatureLoader.LoadedAsset.GetComponent<MeshRenderer>().forceRenderingOff = true;
-                            }
-                        }
-                        else
-                        {
-                            if (!asset.CreatureLoader.LoadedAsset.GetComponent<MeshRenderer>().enabled)
-                            {
-                                asset.CreatureLoader.LoadedAsset.GetComponent<MeshRenderer>().enabled = true;
-                                asset.CreatureLoader.LoadedAsset.GetComponent<MeshRenderer>().forceRenderingOff = false;
-                            }
-                        }
+                        Debug.Log("Asset With Creature Id '"+change.cid+"' Cannot Be Found.");
                     }
-                    catch(Exception) { ; }
                 }
             }
 
@@ -249,10 +216,9 @@ namespace LordAshes
                 if (sMR != null)
                 {
                     Debug.Log("Copying MR->MR");
-                    dMR.material = sMR.material;
-                    dMR.materials = sMR.materials;
-                    dMR.sharedMaterial = sMR.sharedMaterial;
+                    Shader shaderSave = dMR.material.shader;  // Shader must be maintained in order for the Stealth mode to work automatically
                     dMR.sharedMaterials = sMR.sharedMaterials;
+                    dMR.material.shader = shaderSave;
                 }
 
                 SkinnedMeshRenderer sSMR = (source.GetComponent<SkinnedMeshRenderer>() != null) ? source.GetComponent<SkinnedMeshRenderer>() : source.GetComponentInChildren<SkinnedMeshRenderer>();
@@ -260,10 +226,9 @@ namespace LordAshes
                 {
                     Debug.Log("Copying SMR->MF/MR");
                     dMF.sharedMesh = sSMR.sharedMesh;
+                    Shader shaderSave = dMR.material.shader; // Shader must be maintained in order for the Stealth mode to work automatically
                     dMR.material = sSMR.material;
-                    dMR.materials = sSMR.materials;
-                    dMR.sharedMaterial = sSMR.sharedMaterial;
-                    dMR.sharedMaterials = sSMR.sharedMaterials;
+                    dMR.material.shader = shaderSave;
                 }
             }
         }

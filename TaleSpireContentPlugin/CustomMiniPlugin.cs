@@ -8,20 +8,19 @@ using System.Linq;
 namespace LordAshes
 {
     [BepInPlugin(Guid, Name, Version)]
+    [BepInDependency(StatMessaging.Guid)]
     public partial class CustomMiniPlugin : BaseUnityPlugin
     {
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "4.0.0.0";
+        public const string Version = "4.1.0.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
 
         // Triggers
         private ConfigEntry<KeyboardShortcut>[] actionTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[2];
-        private ConfigEntry<KeyboardShortcut>[] animTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[5];
-        private ConfigEntry<string>[] animNames { get; set; } = new ConfigEntry<string>[5];
 
         // Chat handelr
         private static RequestHandler requestHandler = new RequestHandler(Guid, dir);
@@ -55,18 +54,8 @@ namespace LordAshes
             actionTriggers[0] = Config.Bind("Hotkeys", "Transform Mini", new KeyboardShortcut(KeyCode.M, KeyCode.LeftControl));
             actionTriggers[1] = Config.Bind("Hotkeys", "Add Effect", new KeyboardShortcut(KeyCode.E, KeyCode.LeftControl));
 
-            animTriggers[0] = Config.Bind("Hotkeys", "Play Animation/Pose 1", new KeyboardShortcut(KeyCode.Alpha4, KeyCode.LeftControl));
-            animTriggers[1] = Config.Bind("Hotkeys", "Play Animation/Pose 2", new KeyboardShortcut(KeyCode.Alpha5, KeyCode.LeftControl));
-            animTriggers[2] = Config.Bind("Hotkeys", "Play Animation/Pose 3", new KeyboardShortcut(KeyCode.Alpha6, KeyCode.LeftControl));
-            animTriggers[3] = Config.Bind("Hotkeys", "Play Animation/Pose 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.LeftControl));
-            animTriggers[4] = Config.Bind("Hotkeys", "Play Animation/Pose 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.LeftControl));
-
-            // Setup default animation names
-            animNames[0] = Config.Bind("Animation", "Animation/Pose 1 Name", "Idle");
-            animNames[1] = Config.Bind("Animation", "Animation/Pose 2 Name", "Ready");
-            animNames[2] = Config.Bind("Animation", "Animation/Pose 3 Name", "Attack");
-            animNames[3] = Config.Bind("Animation", "Animation/Pose 4 Name", "Dance");
-            animNames[4] = Config.Bind("Animation", "Animation/Pose 5 Name", "Die");
+            // Activate State Detection Board Subscription 
+            StateDetection.Initiailze();
         }
 
         /// <summary>
@@ -75,73 +64,25 @@ namespace LordAshes
         /// </summary>
         void Update()
         {
-            if (StateDetection.Ready(ref requestHandler))
+            if (StateDetection.Ready())
             {
-                StatMessaging.Check(requestHandler.Request);
-
-                requestHandler.SyncStealthMode();
-
                 // Check for Transformation 
                 if (StrictKeyCheck(actionTriggers[0].Value))
                 {
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Make me a: ", "OK",
-                                                    (s) => { requestHandler.SetTransformationRequest(LocalClient.SelectedCreatureId, s); }, null,
-                                                    "Remove", () => { requestHandler.SetTransformationRequest(LocalClient.SelectedCreatureId, ""); },
+                                                    (s) => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, s); }, null,
+                                                    "Remove", () => { StatMessaging.ClearInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid); },
                                                     "");
                 }
+
+                
 
                 if (StrictKeyCheck(actionTriggers[1].Value))
                 {
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Add effect: ", "OK",
-                                                    (s) => { requestHandler.SetTransformationRequest(LocalClient.SelectedCreatureId, "#" + s); }, null,
-                                                    "Remove", () => { requestHandler.SetTransformationRequest(LocalClient.SelectedCreatureId, "#"); },
+                                                    (s) => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, "#"+s); }, null,
+                                                    "Remove", () => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, "#"); },
                                                     "");
-                }
-
-                for (int a = 0; a < animNames.Length; a++)
-                {
-                    if (StrictKeyCheck(animTriggers[a].Value))
-                    {
-                        Debug.Log("Request Animation/Pose " + (a + 1) + "...");
-                        CreatureBoardAsset asset;
-                        CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out asset);
-                        if (asset != null)
-                        {
-                            GameObject go = GameObject.Find("CustomContent:" + asset.Creature.CreatureId);
-                            if (go != null)
-                            {
-                                Animation anim = go.GetComponent<Animation>();
-                                if (anim != null)
-                                {
-                                    if (anim.isPlaying)
-                                    {
-                                        Debug.Log("Stopping Animations On Mini");
-                                        anim.Stop();
-                                    }
-                                    else
-                                    {
-                                        Debug.Log("Activating Animation '" + animNames[a].Value + "' On Mini");
-                                        try
-                                        {
-                                            anim.Play(animNames[a].Value);
-                                        }
-                                        catch (System.Exception)
-                                        {
-                                            Debug.Log("Creature '" + asset.Creature.Name + "' does not have animation '" + animNames[a].Value + "'");
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    Debug.Log("Creature '" + asset.Creature.Name + "' does not have animations");
-                                }
-                            }
-                            else
-                            {
-                                Debug.Log("Creature '" + asset.Creature.Name + "' does not have animations");
-                            }
-                        }
-                    }
                 }
             }
         }

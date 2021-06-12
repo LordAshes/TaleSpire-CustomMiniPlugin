@@ -13,16 +13,36 @@ namespace LordAshes
             private static int stage = stageStart;
             private static int assetCount = 0;
 
-            public static bool Ready(ref LordAshes.CustomMiniPlugin.RequestHandler requestHandler)
+            private static System.Guid subscriptionGuid = System.Guid.Empty;
+
+            private static bool IsBoardLoaded = false;
+
+            public static void Initiailze()
             {
-                if (IsBoardLoaded())
+                BoardSessionManager.OnStateChange += (s) =>
                 {
+                    Debug.Log("StateDetection: Board Changed To " + s.ToString());
+                    if (s.ToString().Contains("+Active")) { IsBoardLoaded = true; } else { IsBoardLoaded = false; }
+                };
+            }
+
+            public static bool Ready()
+            {
+                if (IsBoardLoaded)
+                {
+                    if (stage >= 11)
+                    {
+                        return true;
+                    }
                     //
                     // Stage 10: Ready
                     //
-                    if (stage == 10)
+                    else if (stage == 10)
                     {
-                        return true;
+                        Debug.Log("Subscribing To '" + CustomMiniPlugin.Guid + "' Messages");
+                        subscriptionGuid = StatMessaging.Subscribe(CustomMiniPlugin.Guid, CustomMiniPlugin.requestHandler.Request);
+                        StatMessaging.Reset();
+                        stage++;
                     }
                     //
                     // Stage 2+: Waiting To Process SystemMessage
@@ -98,15 +118,11 @@ namespace LordAshes
                 else if (stage >= 0)
                 {
                     Debug.Log("Board Is Re-loading...");
+                    StatMessaging.Unsubscribe(subscriptionGuid);
                     StatMessaging.Reset();
                     stage = stageStart;
                 }
-                return (stage == 10);
-            }
-
-            private static bool IsBoardLoaded()
-            {
-                return (CameraController.HasInstance && BoardSessionManager.HasInstance && BoardSessionManager.HasBoardAndIsInNominalState && !BoardSessionManager.IsLoading);
+                return false;
             }
         }
     }
