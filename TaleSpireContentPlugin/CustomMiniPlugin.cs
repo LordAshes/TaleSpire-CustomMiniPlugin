@@ -98,51 +98,9 @@ namespace LordAshes
                     if(StrictKeyCheck(animTriggers[a].Value))
                     {
                         Debug.Log("Animation " + (a + 1) + " Key Pressed");
-                        CreatureGuid cid;
+
                         CreatureBoardAsset asset;
-                        float dist;
-                        Vector3 mousePos = Input.mousePosition;
-                        mousePos.z = Camera.main.nearClipPlane;
-                        Vector3 mouseInWorld = Camera.main.ScreenToWorldPoint(mousePos);
-
-                        Debug.Log("Screen Coords Converted");
-
-                        RaycastHit hitInfo;
-                        Vector3 direction = Quaternion.Euler(0, Camera.main.transform.eulerAngles.y, 0) * new Vector3(0, 0, 1);
-
-                        Debug.Log("Direction Defined");
-
-                        if (Physics.Raycast(mouseInWorld, direction, out hitInfo, 10))
-                        {
-                            Debug.Log("Ray Hit");
-                            try { Debug.Log(hitInfo.articulationBody.name); } catch (System.Exception) {; }
-                            try { Debug.Log(hitInfo.collider.name); } catch (System.Exception) {; }
-                            try { Debug.Log(hitInfo.rigidbody); } catch (System.Exception) {; }
-                            try { Debug.Log(hitInfo.point); } catch (System.Exception) {; }
-                        }
-                        else
-                        {
-                            Debug.Log("Ray Missed");
-                            Debug.DrawRay(transform.position, direction * 10, Color.yellow);
-                        }
-
-                        direction = Quaternion.Euler(0, Camera.main.transform.eulerAngles.y, 0) * new Vector3(0, 0, -1);
-                        if (Physics.Raycast(mouseInWorld, direction, out hitInfo, 10))
-                        {
-                            Debug.Log("Ray Hit");
-                            try { Debug.Log(hitInfo.articulationBody.name); } catch (System.Exception) {; }
-                            try { Debug.Log(hitInfo.collider.name); } catch (System.Exception) {; }
-                            try { Debug.Log(hitInfo.rigidbody); } catch (System.Exception) {; }
-                            try { Debug.Log(hitInfo.point); } catch (System.Exception) {; }
-                        }
-                        else
-                        {
-                            Debug.Log("Ray Missed");
-                            Debug.DrawRay(transform.position, direction * 10, Color.yellow);
-                        }
-
                         CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out asset);
-                        Debug.Log("Closet Mini is '" + asset.Creature.Name + "' (" + asset.Creature.CreatureId + ")");
                         if (asset != null)
                         {
                             AudioSource sound = asset.GetComponentInChildren<AudioSource>();
