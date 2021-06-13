@@ -4,6 +4,7 @@ using BepInEx.Configuration;
 using UnityEngine;
 
 using System.Linq;
+using System.Collections.Generic;
 
 namespace LordAshes
 {
@@ -14,13 +15,14 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "4.1.0.0";
+        public const string Version = "4.2.0.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
 
         // Triggers
         private ConfigEntry<KeyboardShortcut>[] actionTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[2];
+        private ConfigEntry<KeyboardShortcut>[] animTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[5];
 
         // Chat handelr
         private static RequestHandler requestHandler = new RequestHandler(Guid, dir);
@@ -54,6 +56,12 @@ namespace LordAshes
             actionTriggers[0] = Config.Bind("Hotkeys", "Transform Mini", new KeyboardShortcut(KeyCode.M, KeyCode.LeftControl));
             actionTriggers[1] = Config.Bind("Hotkeys", "Add Effect", new KeyboardShortcut(KeyCode.E, KeyCode.LeftControl));
 
+            animTriggers[0] = Config.Bind("Hotkeys", "Animatio 1", new KeyboardShortcut(KeyCode.Alpha4, KeyCode.LeftControl));
+            animTriggers[1] = Config.Bind("Hotkeys", "Animatio 2", new KeyboardShortcut(KeyCode.Alpha5, KeyCode.LeftControl));
+            animTriggers[2] = Config.Bind("Hotkeys", "Animatio 3", new KeyboardShortcut(KeyCode.Alpha6, KeyCode.LeftControl));
+            animTriggers[3] = Config.Bind("Hotkeys", "Animatio 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.LeftControl));
+            animTriggers[4] = Config.Bind("Hotkeys", "Animatio 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.LeftControl));
+
             // Activate State Detection Board Subscription 
             StateDetection.Initiailze();
         }
@@ -83,6 +91,76 @@ namespace LordAshes
                                                     (s) => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, "#"+s); }, null,
                                                     "Remove", () => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, "#"); },
                                                     "");
+                }
+
+                for(int a=0; a<animTriggers.Length; a++)
+                {
+                    if(StrictKeyCheck(animTriggers[a].Value))
+                    {
+                        Debug.Log("Animation " + (a + 1) + " Key Pressed");
+                        CreatureGuid cid;
+                        CreatureBoardAsset asset;
+                        float dist;
+                        Vector3 mousePos = Input.mousePosition;
+                        mousePos.z = Camera.main.nearClipPlane;
+                        Vector3 mouseInWorld = Camera.main.ScreenToWorldPoint(mousePos);
+
+                        Debug.Log("Screen Coords Converted");
+
+                        RaycastHit hitInfo;
+                        Vector3 direction = Quaternion.Euler(0, Camera.main.transform.eulerAngles.y, 0) * new Vector3(0, 0, 1);
+
+                        Debug.Log("Direction Defined");
+
+                        if (Physics.Raycast(mouseInWorld, direction, out hitInfo, 10))
+                        {
+                            Debug.Log("Ray Hit");
+                            try { Debug.Log(hitInfo.articulationBody.name); } catch (System.Exception) {; }
+                            try { Debug.Log(hitInfo.collider.name); } catch (System.Exception) {; }
+                            try { Debug.Log(hitInfo.rigidbody); } catch (System.Exception) {; }
+                            try { Debug.Log(hitInfo.point); } catch (System.Exception) {; }
+                        }
+                        else
+                        {
+                            Debug.Log("Ray Missed");
+                            Debug.DrawRay(transform.position, direction * 10, Color.yellow);
+                        }
+
+                        direction = Quaternion.Euler(0, Camera.main.transform.eulerAngles.y, 0) * new Vector3(0, 0, -1);
+                        if (Physics.Raycast(mouseInWorld, direction, out hitInfo, 10))
+                        {
+                            Debug.Log("Ray Hit");
+                            try { Debug.Log(hitInfo.articulationBody.name); } catch (System.Exception) {; }
+                            try { Debug.Log(hitInfo.collider.name); } catch (System.Exception) {; }
+                            try { Debug.Log(hitInfo.rigidbody); } catch (System.Exception) {; }
+                            try { Debug.Log(hitInfo.point); } catch (System.Exception) {; }
+                        }
+                        else
+                        {
+                            Debug.Log("Ray Missed");
+                            Debug.DrawRay(transform.position, direction * 10, Color.yellow);
+                        }
+
+                        CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out asset);
+                        Debug.Log("Closet Mini is '" + asset.Creature.Name + "' (" + asset.Creature.CreatureId + ")");
+                        if (asset != null)
+                        {
+                            AudioSource sound = asset.GetComponentInChildren<AudioSource>();
+                            Animation anim = asset.GetComponentInChildren<Animation>();
+                            if (anim.isPlaying)
+                            {
+                                Debug.Log("Stopping Current Animation");
+                                anim.Stop();
+                            }
+                            Debug.Log("Starting Animation " + (a + 1));
+                            anim.Play("Anim" + (a + 1));
+                            if (sound != null)
+                            {
+                                Debug.Log("Starting Sound");
+                                sound.Play(0);
+                            }
+                        }
+                    }
                 }
             }
         }

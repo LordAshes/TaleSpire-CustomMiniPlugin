@@ -125,7 +125,16 @@ namespace LordAshes
                                     if (ab.name == assetBundleName) { UnityEngine.Debug.Log("AssetBundle Is Already Loaded. Reusing."); assetBundle = ab; break; }
                                 }
                                 if (assetBundle == null) { UnityEngine.Debug.Log("AssetBundle Is Not Already Loaded. Loading."); assetBundle = AssetBundle.LoadFromFile(source); }
-                                content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(System.IO.Path.GetFileNameWithoutExtension(source)));
+                                content = null;
+                                try
+                                {
+                                    content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(System.IO.Path.GetFileNameWithoutExtension(source)));
+                                }
+                                catch(Exception x)
+                                {
+                                    Debug.Log("Error Instantiating Asset: Asset Source = '" + source+"'");
+                                    Debug.Log("Error Instantiating Asset: " + x);
+                                }
                                 break;
                             case ".OBJ": // OBJ/MTL Source
                                 UnityEngine.Debug.Log("Using OBJ/MTL Loader");
@@ -134,12 +143,22 @@ namespace LordAshes
                                     missingContentCallback(asset.Creature.Name + " (" + System.IO.Path.GetDirectoryName(source) + "/" + System.IO.Path.GetFileNameWithoutExtension(source) + ".mtl)", asset.Creature.CreatureId);
                                 }
                                 UnityExtension.ShaderDetector.Reference(System.IO.Path.GetDirectoryName(source) + "/" + System.IO.Path.GetFileNameWithoutExtension(source) + ".mtl");
-                                content = new OBJLoader().Load(source);
+                                content = null;
+                                try
+                                {
+                                    content = new OBJLoader().Load(source);
+                                }
+                                catch(Exception x)
+                                {
+                                    Debug.Log("Error Instantiating OBJ/MTL: OBJ Source = '" + source + "'");
+                                    Debug.Log("Error Instantiating OBJ/MTL: " + x);
+                                }
                                 break;
                             default: // Unrecognized Source
                                 Debug.Log("Content Type '" + System.IO.Path.GetExtension(source).ToUpper() + "' is not supported. Use OBJ/MTL or FBX.");
                                 break;
                         }
+                        if (content == null) { return; }
                         content.name = prefix + asset.Creature.CreatureId;
 
                         if (!effect)
@@ -158,6 +177,13 @@ namespace LordAshes
                             catch (Exception) {; }
                             UnityEngine.Debug.Log("Destroying Template...");
                             GameObject.Destroy(GameObject.Find(prefix + asset.Creature.CreatureId));
+                        }
+                        else
+                        {
+                            UnityEngine.Debug.Log("Attaching To Base...");
+                            content.transform.position = asset.BaseLoader.transform.position;
+                            content.transform.rotation = asset.BaseLoader.transform.rotation;
+                            content.transform.SetParent(asset.BaseLoader.transform);
                         }
                     }
                     else
