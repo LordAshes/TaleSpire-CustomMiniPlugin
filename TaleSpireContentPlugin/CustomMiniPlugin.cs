@@ -15,7 +15,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "4.2.0.0";
+        public const string Version = "4.2.1.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
@@ -62,8 +62,8 @@ namespace LordAshes
             animTriggers[3] = Config.Bind("Hotkeys", "Animatio 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.LeftControl));
             animTriggers[4] = Config.Bind("Hotkeys", "Animatio 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.LeftControl));
 
-            // Activate State Detection Board Subscription 
-            StateDetection.Initiailze();
+            // Display Plugin Info On Main Screen And Activate State Detection Board Subscription 
+            StateDetection.Initiailze(this.GetType());
         }
 
         /// <summary>

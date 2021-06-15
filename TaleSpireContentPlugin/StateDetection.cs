@@ -1,5 +1,8 @@
 ﻿using BepInEx;
+using System;
+using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace LordAshes
 {
@@ -17,12 +20,44 @@ namespace LordAshes
 
             private static bool IsBoardLoaded = false;
 
-            public static void Initiailze()
+            public static void Initiailze(System.Reflection.MemberInfo plugin)
             {
                 BoardSessionManager.OnStateChange += (s) =>
                 {
                     Debug.Log("StateDetection: Board Changed To " + s.ToString());
                     if (s.ToString().Contains("+Active")) { IsBoardLoaded = true; } else { IsBoardLoaded = false; }
+                };
+
+                SceneManager.sceneLoaded += (scene, mode) =>
+                {
+                    try
+                    {
+                        if (scene.name == "UI")
+                        {
+                            TextMeshProUGUI betaText = GetUITextByName("BETA");
+                            if (betaText)
+                            {
+                                betaText.text = "INJECTED BUILD - unstable mods";
+                            }
+                        }
+                        else
+                        {
+                            TextMeshProUGUI modListText = GetUITextByName("TextMeshPro Text");
+                            if (modListText)
+                            {
+                                BepInPlugin bepInPlugin = (BepInPlugin)Attribute.GetCustomAttribute(plugin, typeof(BepInPlugin));
+                                if (modListText.text.EndsWith("</size>"))
+                                {
+                                    modListText.text += "\n\nMods Currently Installed:\n";
+                                }
+                                modListText.text += "\nLord Ashes' " + bepInPlugin.Name + " - " + bepInPlugin.Version;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.Log(ex);
+                    }
                 };
             }
 
@@ -124,7 +159,21 @@ namespace LordAshes
                 }
                 return false;
             }
+
+            public static TextMeshProUGUI GetUITextByName(string name)
+            {
+                TextMeshProUGUI[] texts = UnityEngine.Object.FindObjectsOfType<TextMeshProUGUI>();
+                for (int i = 0; i < texts.Length; i++)
+                {
+                    if (texts[i].name == name)
+                    {
+                        return texts[i];
+                    }
+                }
+                return null;
+            }
         }
     }
 }
+
 
