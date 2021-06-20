@@ -1,10 +1,9 @@
-﻿using BepInEx;
-using BepInEx.Configuration;
-
-using UnityEngine;
-
-using System.Linq;
+﻿using System.Linq;
 using System.Collections.Generic;
+
+using BepInEx;
+using BepInEx.Configuration;
+using UnityEngine;
 
 namespace LordAshes
 {
@@ -15,17 +14,17 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "4.2.1.0";
+        public const string Version = "4.3.1.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
 
         // Triggers
-        private ConfigEntry<KeyboardShortcut>[] actionTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[2];
+        private ConfigEntry<KeyboardShortcut>[] actionTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[3];
         private ConfigEntry<KeyboardShortcut>[] animTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[5];
 
         // Chat handelr
-        private static RequestHandler requestHandler = new RequestHandler(Guid, dir);
+        private static RequestHandler requestHandler = new RequestHandler();
 
         /// <summary>
         /// Function for initializing plugin
@@ -55,14 +54,15 @@ namespace LordAshes
             // Setup default trigger
             actionTriggers[0] = Config.Bind("Hotkeys", "Transform Mini", new KeyboardShortcut(KeyCode.M, KeyCode.LeftControl));
             actionTriggers[1] = Config.Bind("Hotkeys", "Add Effect", new KeyboardShortcut(KeyCode.E, KeyCode.LeftControl));
+            actionTriggers[2] = Config.Bind("Hotkeys", "Play Animation", new KeyboardShortcut(KeyCode.P, KeyCode.LeftControl));
 
-            animTriggers[0] = Config.Bind("Hotkeys", "Animatio 1", new KeyboardShortcut(KeyCode.Alpha4, KeyCode.LeftControl));
-            animTriggers[1] = Config.Bind("Hotkeys", "Animatio 2", new KeyboardShortcut(KeyCode.Alpha5, KeyCode.LeftControl));
-            animTriggers[2] = Config.Bind("Hotkeys", "Animatio 3", new KeyboardShortcut(KeyCode.Alpha6, KeyCode.LeftControl));
-            animTriggers[3] = Config.Bind("Hotkeys", "Animatio 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.LeftControl));
-            animTriggers[4] = Config.Bind("Hotkeys", "Animatio 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.LeftControl));
+            animTriggers[0] = Config.Bind("Hotkeys", "Animation 1", new KeyboardShortcut(KeyCode.Alpha4, KeyCode.LeftControl));
+            animTriggers[1] = Config.Bind("Hotkeys", "Animation 2", new KeyboardShortcut(KeyCode.Alpha5, KeyCode.LeftControl));
+            animTriggers[2] = Config.Bind("Hotkeys", "Animation 3", new KeyboardShortcut(KeyCode.Alpha6, KeyCode.LeftControl));
+            animTriggers[3] = Config.Bind("Hotkeys", "Animation 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.LeftControl));
+            animTriggers[4] = Config.Bind("Hotkeys", "Animation 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.LeftControl));
 
-            // Display Plugin Info On Main Screen And Activate State Detection Board Subscription 
+            // Activate State Detection Board Subscription 
             StateDetection.Initiailze(this.GetType());
         }
 
@@ -74,6 +74,25 @@ namespace LordAshes
         {
             if (StateDetection.Ready())
             {
+
+                // Implement stealth mode, height bar mode and fly mode
+                foreach (CreatureBoardAsset asset in CreaturePresenter.AllCreatureAssets)
+                {
+                    GameObject go = GameObject.Find("CustomContent:" + asset.Creature.CreatureId);
+                    if (go != null)
+                    {
+                        if (go.GetComponentInChildren<SkinnedMeshRenderer>() != null)
+                        { 
+                            go.GetComponentInChildren<SkinnedMeshRenderer>().enabled = !asset.Creature.IsExplicitlyHidden & !asset.IsFlying & (asset.transform.position.y < CameraController.HidePlaneHeight); 
+                        }
+                        else if (go.GetComponentInChildren<MeshRenderer>() != null) 
+                        { 
+                            go.GetComponentInChildren<MeshRenderer>().enabled = !asset.Creature.IsExplicitlyHidden & !asset.IsFlying & (asset.transform.position.y < CameraController.HidePlaneHeight);
+                        }
+                        asset.CreatureLoader.LoadedAsset.GetComponent<MeshRenderer>().enabled = asset.IsFlying;
+                    }
+                }
+
                 // Check for Transformation 
                 if (StrictKeyCheck(actionTriggers[0].Value))
                 {
@@ -83,41 +102,48 @@ namespace LordAshes
                                                     "");
                 }
 
-                
-
+                // Check for Effects
                 if (StrictKeyCheck(actionTriggers[1].Value))
                 {
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Add effect: ", "OK",
-                                                    (s) => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, "#"+s); }, null,
-                                                    "Remove", () => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, "#"); },
+                                                    (s) => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid+".effect", s); }, null,
+                                                    "Remove", () => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid+".effect", ""); },
                                                     "");
                 }
 
-                for(int a=0; a<animTriggers.Length; a++)
+                // Check for Animations
+                if (StrictKeyCheck(actionTriggers[2].Value))
+                {
+                    SystemMessage.AskForTextInput("Custom Mini Plugin", "Play animation: ", "OK",
+                                                    (s) => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid+".assetAnimation", s); }, null,
+                                                    "Remove", () => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid+".animation", ""); },
+                                                    "");
+                }
+
+                // Check for Quick Animations
+                for (int a=0; a<animTriggers.Length; a++)
                 {
                     if(StrictKeyCheck(animTriggers[a].Value))
                     {
                         Debug.Log("Animation " + (a + 1) + " Key Pressed");
+                        StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid + ".assetAnimation", "Anim"+(a+1));
+                    }
+                }
 
-                        CreatureBoardAsset asset;
-                        CreaturePresenter.TryGetAsset(LocalClient.SelectedCreatureId, out asset);
-                        if (asset != null)
-                        {
-                            AudioSource sound = asset.GetComponentInChildren<AudioSource>();
-                            Animation anim = asset.GetComponentInChildren<Animation>();
-                            if (anim.isPlaying)
-                            {
-                                Debug.Log("Stopping Current Animation");
-                                anim.Stop();
-                            }
-                            Debug.Log("Starting Animation " + (a + 1));
-                            anim.Play("Anim" + (a + 1));
-                            if (sound != null)
-                            {
-                                Debug.Log("Starting Sound");
-                                sound.Play(0);
-                            }
-                        }
+                // Sync stealth mode & height bar
+                for(int t=0; t<requestHandler.transformedAssets.Count; t++)
+                {
+                    try
+                    {
+                        // Show additional GO when not flying
+                        requestHandler.transformedAssets.ElementAt(t).Value.enabled = (requestHandler.transformedAssets.ElementAt(t).Key.IsVisible && !requestHandler.transformedAssets.ElementAt(t).Key.IsFlying);
+                        // Show original mini when flying
+                        requestHandler.transformedAssets.ElementAt(t).Key.CreatureLoader.LoadedAsset.GetComponent<MeshRenderer>().enabled = (requestHandler.transformedAssets.ElementAt(t).Key.IsVisible && requestHandler.transformedAssets.ElementAt(t).Key.IsFlying);
+                    }
+                    catch(System.Exception)
+                    {
+                        // Creature deleted - remove from transformation list
+                        requestHandler.transformedAssets.Remove(requestHandler.transformedAssets.ElementAt(t).Key);
                     }
                 }
             }
@@ -126,6 +152,21 @@ namespace LordAshes
         public static RequestHandler GetRequestHander()
         {
             return requestHandler;
+        }
+
+        /// <summary>
+        /// Methiod for extracting the creature name when using Stat Maessaging
+        /// </summary>
+        /// <param name="creature"></param>
+        /// <returns></returns>
+        public static string GetCreatureName(Creature creature)
+        {
+            string result = creature.Name;
+            if(result.IndexOf("<size=0>")>=0)
+            {
+                result = result.Substring(0, result.IndexOf("<size=0>"));
+            }
+            return result;
         }
 
         /// <summary>
