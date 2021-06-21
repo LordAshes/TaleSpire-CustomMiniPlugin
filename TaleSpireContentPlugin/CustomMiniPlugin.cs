@@ -4,17 +4,19 @@ using System.Collections.Generic;
 using BepInEx;
 using BepInEx.Configuration;
 using UnityEngine;
+using System;
 
 namespace LordAshes
 {
     [BepInPlugin(Guid, Name, Version)]
     [BepInDependency(StatMessaging.Guid)]
+    [BepInDependency(RadialUI.RadialUIPlugin.Guid)]
     public partial class CustomMiniPlugin : BaseUnityPlugin
     {
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "4.3.1.0";
+        public const string Version = "4.4.0.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
@@ -23,8 +25,11 @@ namespace LordAshes
         private ConfigEntry<KeyboardShortcut>[] actionTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[3];
         private ConfigEntry<KeyboardShortcut>[] animTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[5];
 
-        // Chat handelr
+        // Request handelr
         private static RequestHandler requestHandler = new RequestHandler();
+
+        // Show Effect Dialog
+        private CreatureGuid showEffectDialog = CreatureGuid.Empty;
 
         /// <summary>
         /// Function for initializing plugin
@@ -62,8 +67,26 @@ namespace LordAshes
             animTriggers[3] = Config.Bind("Hotkeys", "Animation 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.LeftControl));
             animTriggers[4] = Config.Bind("Hotkeys", "Animation 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.LeftControl));
 
+            // Add transformation main menu
+            RadialUI.RadialSubmenu.EnsureMainMenuItem(  RadialUI.RadialUIPlugin.Guid + ".Transformation",
+                                                        RadialUI.RadialSubmenu.MenuType.character,
+                                                        "Transformation",
+                                                        RadialUI.RadialSubmenu.GetIconFromFile(dir + "Images/Icons/Transformation.png")
+                                                      );
+            // Add effect sub-menu
+            RadialUI.RadialSubmenu.CreateSubMenuItem(   RadialUI.RadialUIPlugin.Guid + ".Transformation",
+                                                        "Effect",
+                                                        RadialUI.RadialSubmenu.GetIconFromFile(dir + "Images/Icons/Effect.png"),
+                                                        ActivateEffect
+                                                    );
+
             // Activate State Detection Board Subscription 
             StateDetection.Initiailze(this.GetType());
+        }
+
+        private void ActivateEffect(CreatureGuid cid, string menu, MapMenuItem mmi)
+        {
+            showEffectDialog = cid;
         }
 
         /// <summary>
@@ -103,11 +126,13 @@ namespace LordAshes
                 }
 
                 // Check for Effects
-                if (StrictKeyCheck(actionTriggers[1].Value))
+                if (StrictKeyCheck(actionTriggers[1].Value) || showEffectDialog!=CreatureGuid.Empty)
                 {
+                    CreatureGuid active = (showEffectDialog != CreatureGuid.Empty) ? showEffectDialog : LocalClient.SelectedCreatureId;
+                    showEffectDialog = CreatureGuid.Empty;
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Add effect: ", "OK",
-                                                    (s) => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid+".effect", s); }, null,
-                                                    "Remove", () => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid+".effect", ""); },
+                                                    (s) => { StatMessaging.SetInfo(active, CustomMiniPlugin.Guid+".effect", s); }, null,
+                                                    "Remove", () => { StatMessaging.SetInfo(active, CustomMiniPlugin.Guid+".effect", ""); },
                                                     "");
                 }
 

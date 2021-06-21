@@ -1,30 +1,18 @@
-﻿using Dummiesman;
-using System;
-using System.Linq;
-using UnityEngine;
-using BepInEx;
-using Newtonsoft.Json;
+﻿using System;
 using System.Collections.Generic;
+
+using BepInEx;
+using Dummiesman;
+using UnityEngine;
 
 namespace LordAshes
 {
-
     public partial class CustomMiniPlugin : BaseUnityPlugin
     {
         public class RequestHandler
         {
             // Directory for custom content
-            private string dir = "";
-
-            /// <summary>
-            /// Constructor taking in the content directory and identifiers
-            /// </summary>
-            /// <param name="requestIdentifiers"></param>
-            /// <param name="path"></param>
-            public RequestHandler(string guid, string path)
-            {
-                this.dir = path;
-            }
+            public Dictionary<CreatureBoardAsset, Renderer> transformedAssets = new Dictionary<CreatureBoardAsset, Renderer>();
 
             /// <summary>
             /// Callback method that is informed by StatMessaging when the Stat Block has changed.
@@ -45,9 +33,30 @@ namespace LordAshes
                     CreaturePresenter.TryGetAsset(change.cid, out asset);
                     if (asset != null)
                     {
-                        // Process the request (since remove has a blank value this will trigger mesh removal)
-                        Debug.Log("Transfromation Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
-                        LoadCustomContent(asset, dir+"Minis/"+change.value+"/"+change.value);
+                        if(change.key.Contains(".assetAnimation"))
+                        {
+                            if (change.value != "")
+                            {
+                                // Process the request (since remove has a blank value this will trigger mesh removal)
+                                Debug.Log("Play Animation Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
+                                // Reset request
+                                StatMessaging.SetInfo(change.cid, change.key, "");
+                                // Process animation
+                                PlayAnimation(asset, change.value);
+                            }
+                        }
+                        else if (change.key.Contains(".effect"))
+                        {
+                            // Process the request (since remove has a blank value this will trigger mesh removal)
+                            Debug.Log("Effect Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
+                            LoadCustomContent(asset, LoadType.effect, CustomMiniPlugin.dir + "Minis/" + change.value + "/" + change.value);
+                        }
+                        else
+                        {
+                            // Process the request (since remove has a blank value this will trigger mesh removal)
+                            Debug.Log("Transfromation Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
+                            LoadCustomContent(asset, LoadType.mini, CustomMiniPlugin.dir + "Minis/" + change.value + "/" + change.value);
+                        }
                     }
                     else
                     {
@@ -57,21 +66,63 @@ namespace LordAshes
             }
 
             /// <summary>
+            /// Play an animation on an asset with built in animations
+            /// </summary>
+            /// <param name="asset">Asset which is to be animated</param>
+            /// <param name="animationName">Name of the animation to be played</param>
+            public void PlayAnimation(CreatureBoardAsset asset, string animationName)
+            {
+                // Find corresponding attached Game Object
+                Debug.Log("Getting Animation Object");
+                GameObject animationObject = GameObject.Find("CustomContent:" + asset.Creature.CreatureId);
+                if(animationObject!=null)
+                {
+                    // Check to see if the asset has built in animations
+                    Animation anim = (animationObject.GetComponent<Animation>() != null) ? animationObject.GetComponent<Animation>() : animationObject.GetComponentInChildren<Animation>();
+                    if(anim!=null)
+                    {
+                        // Check each built in animations for the animation name
+                        foreach(AnimationState state in anim)
+                        {
+                            Debug.Log("Animation Object Has Clip '" + state.name+ "'. Looking for '"+animationName+"'");
+                            // Compare animation clip name to request content
+                            if (state.name==animationName)
+                            {
+                                // Play animation
+                                Debug.Log("Activating Animation");
+                                anim.Stop();
+                                anim.Play(state.name);
+                                return;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Debug.Log("Animation Object 'CustomContent:" + asset.Creature.CreatureId + "' Does Not Have An Animation Component.");
+                    }
+                }
+                else
+                {
+                    Debug.Log("Animation Object 'CustomContent:"+asset.Creature.CreatureId+"' Not Found.");
+                }
+                // Animation not found on asset, re-broadcast in case the General Animation plugin is installed
+                StatMessaging.SetInfo(asset.Creature.CreatureId, CustomMiniPlugin.Guid + ".animation", animationName);
+            }
+
+            /// <summary>
             /// Adds a custom mesh game object to the indicated asset remove any previous attached mesh objects
             /// </summary>
             /// <param name="asset">Parent asset to whom the custom mesh will be attached</param>
             /// <param name="source">Path and name of the content file</param>
-            public void LoadCustomContent(CreatureBoardAsset asset, string source, Action<string,CreatureGuid> missingContentCallback = null)
+            public void LoadCustomContent(CreatureBoardAsset asset, LoadType style, string source, Action<string,CreatureGuid> missingContentCallback = null)
             {
                 try
                 {
-                    UnityEngine.Debug.Log("Customizing Mini '" + asset.Creature.Name + "' Using '" + source + "'...");
+                    UnityEngine.Debug.Log("Customizing Mini '" + CustomMiniPlugin.GetCreatureName(asset.Creature) + "' Using '" + source + "' Type '" + style.ToString() + "'...");
 
                     // Effects are prefixed by # tag
-                    bool effect = (source.IndexOf("#") > -1);
-                    source = source.Replace("#", "");
+                    bool effect = (style == LoadType.effect);
                     string prefix = (effect) ? "CustomEffect:" : "CustomContent:";
-                    Debug.Log("Effect = " + effect);
 
                     // Look up the content name to see if the actual file has an extenion or not
                     if (System.IO.Path.GetFileNameWithoutExtension(source) != "")
@@ -93,21 +144,20 @@ namespace LordAshes
                             return;
                         }
                     }
+                    // Remove existing effect or animation object
+                    if (!effect)
+                    {
+                        Debug.Log("Destorying '" + CustomMiniPlugin.GetCreatureName(asset.Creature) + "' mesh...");
+                        GameObject.Destroy(GameObject.Find(prefix + asset.Creature.CreatureId));
+                        transformedAssets.Remove(asset);
+                    }
                     else
                     {
-                        // Source is blank meaning this is a remove request
-                        if (!effect)
-                        {
-                            Debug.Log("Destorying '" + asset.Creature.Name + "' mesh...");
-                            asset.CreatureLoader.LoadedAsset.GetComponent<MeshFilter>().mesh.triangles = new int[0];
-                        }
-                        else
-                        {
-                            Debug.Log("Destorying '" + asset.Creature.Name + "' effect...");
-                            GameObject.Destroy(GameObject.Find(prefix+asset.Creature.CreatureId));
-                        }
-                        return;
+                        Debug.Log("Destorying '" + CustomMiniPlugin.GetCreatureName(asset.Creature) + "' effect...");
+                        GameObject.Destroy(GameObject.Find(prefix + asset.Creature.CreatureId));
                     }
+                    // If source is blank then we are done now that we destoryed the effect or animation object
+                    if (source == "") { return; }
 
                     if (System.IO.File.Exists(source))
                     {
@@ -161,29 +211,36 @@ namespace LordAshes
                         if (content == null) { return; }
                         content.name = prefix + asset.Creature.CreatureId;
 
+                        // Sync position and rotation to the base and parent it to the base
+                        UnityEngine.Debug.Log("Attaching To Base...");
+                        content.transform.position = asset.BaseLoader.transform.position;
+                        content.transform.rotation = asset.BaseLoader.transform.rotation;
+                        content.transform.SetParent(asset.BaseLoader.transform);
+                        // Replace original mimi mesh (used for flying)
+                        float baseRadiusMagicNumber = 0.570697f; // Base size for a regular character
+                        float creatureScaleFactor = asset.BaseRadius / baseRadiusMagicNumber;
+                        Debug.Log("(Base Size)" + asset.BaseRadius + "/(BaseUnitSize)" + baseRadiusMagicNumber + "=(CreatureScale)" + creatureScaleFactor);
+                        asset.CreatureLoader.transform.position = new Vector3(0, 0, 0);
+                        asset.CreatureLoader.transform.rotation = Quaternion.Euler(0, 0, 0);
+                        asset.CreatureLoader.transform.eulerAngles = new Vector3(0, 0, 0);
+                        asset.CreatureLoader.transform.localPosition = new Vector3(0, 0, 0);
+                        asset.CreatureLoader.transform.localRotation = Quaternion.Euler(0, 180, 0);
+                        asset.CreatureLoader.transform.localEulerAngles = new Vector3(0, 180, 0);
+                        asset.CreatureLoader.transform.localScale = content.transform.localScale * creatureScaleFactor; // new Vector3(1f, 1f, 1f);
+                        content.transform.localScale = content.transform.localScale *  creatureScaleFactor;
+                        ReplaceGameObjectMesh(content, asset.CreatureLoader.LoadedAsset);
+
+                        // Register transformation if it isn't an effect
                         if (!effect)
                         {
-                            try
+                            foreach (Renderer check in new Renderer[] { content.GetComponent<MeshRenderer>(), 
+                                                                          content.GetComponentInChildren<MeshRenderer>(),
+                                                                          content.GetComponent<SkinnedMeshRenderer>(),
+                                                                          content.GetComponentInChildren<SkinnedMeshRenderer>(),})
                             {
-                                asset.CreatureLoader.transform.position = new Vector3(0, 0, 0);
-                                asset.CreatureLoader.transform.rotation = Quaternion.Euler(0, 0, 0);
-                                asset.CreatureLoader.transform.eulerAngles = new Vector3(0, 0, 0);
-                                asset.CreatureLoader.transform.localPosition = new Vector3(0, 0, 0);
-                                asset.CreatureLoader.transform.localRotation = Quaternion.Euler(0, 180, 0);
-                                asset.CreatureLoader.transform.localEulerAngles = new Vector3(0, 180, 0);
-                                asset.CreatureLoader.transform.localScale = new Vector3(1f, 1f, 1f);
-                                ReplaceGameObjectMesh(content, asset.CreatureLoader.LoadedAsset);
+
+                                if (check != null) { transformedAssets.Add(asset, check); break; }
                             }
-                            catch (Exception) {; }
-                            UnityEngine.Debug.Log("Destroying Template...");
-                            GameObject.Destroy(GameObject.Find(prefix + asset.Creature.CreatureId));
-                        }
-                        else
-                        {
-                            UnityEngine.Debug.Log("Attaching To Base...");
-                            content.transform.position = asset.BaseLoader.transform.position;
-                            content.transform.rotation = asset.BaseLoader.transform.rotation;
-                            content.transform.SetParent(asset.BaseLoader.transform);
                         }
                     }
                     else
@@ -204,7 +261,7 @@ namespace LordAshes
             {
                 MeshFilter dMF = destination.GetComponent<MeshFilter>();
                 MeshRenderer dMR = destination.GetComponent<MeshRenderer>();
-                if(dMF==null || dMR==null) { Debug.LogWarning("Unable get destination MF or MR."); return; }
+                if (dMF == null || dMR == null) { Debug.LogWarning("Unable get destination MF or MR."); return; }
 
                 destination.transform.position = new Vector3(0, 0, 0);
                 destination.transform.rotation = Quaternion.Euler(0, 0, 0);
@@ -230,8 +287,8 @@ namespace LordAshes
                 dMR.transform.localEulerAngles = new Vector3(0, 0, 0);
                 dMR.transform.localScale = new Vector3(1, 1, 1);
 
-                MeshFilter sMF = (source.GetComponent<MeshFilter>()!=null) ? source.GetComponent<MeshFilter>() : source.GetComponentInChildren<MeshFilter>(); 
-                if(sMF != null)
+                MeshFilter sMF = (source.GetComponent<MeshFilter>() != null) ? source.GetComponent<MeshFilter>() : source.GetComponentInChildren<MeshFilter>();
+                if (sMF != null)
                 {
                     Debug.Log("Copying MF->MF");
                     dMF.mesh = sMF.mesh;
@@ -256,6 +313,13 @@ namespace LordAshes
                     dMR.material = sSMR.material;
                     dMR.material.shader = shaderSave;
                 }
+            }
+
+            public enum LoadType
+            {
+                mini = 1,
+                animatedMini = 2,
+                effect = 11
             }
         }
     }

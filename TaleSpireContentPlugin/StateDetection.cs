@@ -16,7 +16,7 @@ namespace LordAshes
             private static int stage = stageStart;
             private static int assetCount = 0;
 
-            private static System.Guid subscriptionGuid = System.Guid.Empty;
+            private static System.Guid[] subscriptionGuid = new System.Guid[] { System.Guid.Empty, System.Guid.Empty, System.Guid.Empty };
 
             private static bool IsBoardLoaded = false;
 
@@ -75,7 +75,9 @@ namespace LordAshes
                     else if (stage == 10)
                     {
                         Debug.Log("Subscribing To '" + CustomMiniPlugin.Guid + "' Messages");
-                        subscriptionGuid = StatMessaging.Subscribe(CustomMiniPlugin.Guid, CustomMiniPlugin.requestHandler.Request);
+                        subscriptionGuid[0] = StatMessaging.Subscribe(CustomMiniPlugin.Guid, CustomMiniPlugin.requestHandler.Request);
+                        subscriptionGuid[1] = StatMessaging.Subscribe(CustomMiniPlugin.Guid+".effect", CustomMiniPlugin.requestHandler.Request);
+                        subscriptionGuid[2] = StatMessaging.Subscribe(CustomMiniPlugin.Guid+".assetAnimation", CustomMiniPlugin.requestHandler.Request);
                         StatMessaging.Reset();
                         stage++;
                     }
@@ -153,7 +155,11 @@ namespace LordAshes
                 else if (stage >= 0)
                 {
                     Debug.Log("Board Is Re-loading...");
-                    StatMessaging.Unsubscribe(subscriptionGuid);
+                    for(int g=0; g<subscriptionGuid.Length; g++)
+                    {
+                        StatMessaging.Unsubscribe(subscriptionGuid[g]);
+                        subscriptionGuid[g] = System.Guid.Empty;
+                    }
                     StatMessaging.Reset();
                     stage = stageStart;
                 }
