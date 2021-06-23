@@ -211,24 +211,25 @@ namespace LordAshes
                         if (content == null) { return; }
                         content.name = prefix + asset.Creature.CreatureId;
 
-                        // Sync position and rotation to the base and parent it to the base
-                        UnityEngine.Debug.Log("Attaching To Base...");
-                        content.transform.position = asset.BaseLoader.transform.position;
-                        content.transform.rotation = asset.BaseLoader.transform.rotation;
-                        content.transform.SetParent(asset.BaseLoader.transform);
                         // Replace original mimi mesh (used for flying)
                         float baseRadiusMagicNumber = 0.570697f; // Base size for a regular character
-                        float creatureScaleFactor = asset.BaseRadius / baseRadiusMagicNumber;
-                        Debug.Log("(Base Size)" + asset.BaseRadius + "/(BaseUnitSize)" + baseRadiusMagicNumber + "=(CreatureScale)" + creatureScaleFactor);
+                        float creatureScaleFactor = content.transform.localScale.x * asset.BaseRadius / baseRadiusMagicNumber;
+                        Debug.Log("(CreatureScale)"+ content.transform.localScale + "x(Base Size)" + asset.BaseRadius + "/(BaseUnitSize)" + baseRadiusMagicNumber + "=(CreatureScale)" + creatureScaleFactor);
                         asset.CreatureLoaders[0].transform.position = new Vector3(0, 0, 0);
                         asset.CreatureLoaders[0].transform.rotation = Quaternion.Euler(0, 0, 0);
                         asset.CreatureLoaders[0].transform.eulerAngles = new Vector3(0, 0, 0);
                         asset.CreatureLoaders[0].transform.localPosition = new Vector3(0, 0, 0);
                         asset.CreatureLoaders[0].transform.localRotation = Quaternion.Euler(0, 180, 0);
                         asset.CreatureLoaders[0].transform.localEulerAngles = new Vector3(0, 180, 0);
-                        asset.CreatureLoaders[0].transform.localScale = content.transform.localScale * creatureScaleFactor; // new Vector3(1f, 1f, 1f);
-                        content.transform.localScale = content.transform.localScale *  creatureScaleFactor;
+                        asset.CreatureLoaders[0].transform.localScale = new Vector3(content.transform.localScale.x, content.transform.localScale.y, content.transform.localScale.z);
                         ReplaceGameObjectMesh(content, asset.CreatureLoaders[0].LoadedAsset);
+
+                        // Sync position and rotation to the base and parent it to the base
+                        UnityEngine.Debug.Log("Attaching To Base...");
+                        content.transform.position = asset.CreatureLoaders[0].transform.position;
+                        content.transform.rotation = asset.CreatureLoaders[0].transform.rotation;
+                        content.transform.localScale = new Vector3(creatureScaleFactor, creatureScaleFactor, creatureScaleFactor);
+                        content.transform.SetParent(asset.CreatureLoaders[0].transform);
 
                         // Register transformation if it isn't an effect
                         if (!effect)
