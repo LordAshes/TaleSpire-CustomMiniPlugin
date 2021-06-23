@@ -220,15 +220,15 @@ namespace LordAshes
                         float baseRadiusMagicNumber = 0.570697f; // Base size for a regular character
                         float creatureScaleFactor = asset.BaseRadius / baseRadiusMagicNumber;
                         Debug.Log("(Base Size)" + asset.BaseRadius + "/(BaseUnitSize)" + baseRadiusMagicNumber + "=(CreatureScale)" + creatureScaleFactor);
-                        asset.CreatureLoader.transform.position = new Vector3(0, 0, 0);
-                        asset.CreatureLoader.transform.rotation = Quaternion.Euler(0, 0, 0);
-                        asset.CreatureLoader.transform.eulerAngles = new Vector3(0, 0, 0);
-                        asset.CreatureLoader.transform.localPosition = new Vector3(0, 0, 0);
-                        asset.CreatureLoader.transform.localRotation = Quaternion.Euler(0, 180, 0);
-                        asset.CreatureLoader.transform.localEulerAngles = new Vector3(0, 180, 0);
-                        asset.CreatureLoader.transform.localScale = content.transform.localScale * creatureScaleFactor; // new Vector3(1f, 1f, 1f);
+                        asset.CreatureLoaders[0].transform.position = new Vector3(0, 0, 0);
+                        asset.CreatureLoaders[0].transform.rotation = Quaternion.Euler(0, 0, 0);
+                        asset.CreatureLoaders[0].transform.eulerAngles = new Vector3(0, 0, 0);
+                        asset.CreatureLoaders[0].transform.localPosition = new Vector3(0, 0, 0);
+                        asset.CreatureLoaders[0].transform.localRotation = Quaternion.Euler(0, 180, 0);
+                        asset.CreatureLoaders[0].transform.localEulerAngles = new Vector3(0, 180, 0);
+                        asset.CreatureLoaders[0].transform.localScale = content.transform.localScale * creatureScaleFactor; // new Vector3(1f, 1f, 1f);
                         content.transform.localScale = content.transform.localScale *  creatureScaleFactor;
-                        ReplaceGameObjectMesh(content, asset.CreatureLoader.LoadedAsset);
+                        ReplaceGameObjectMesh(content, asset.CreatureLoaders[0].LoadedAsset);
 
                         // Register transformation if it isn't an effect
                         if (!effect)

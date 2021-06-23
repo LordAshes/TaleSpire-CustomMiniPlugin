@@ -16,7 +16,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "4.4.0.0";
+        public const string Version = "4.5.0.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
@@ -112,7 +112,7 @@ namespace LordAshes
                         { 
                             go.GetComponentInChildren<MeshRenderer>().enabled = !asset.Creature.IsExplicitlyHidden & !asset.IsFlying & (asset.transform.position.y < CameraController.HidePlaneHeight);
                         }
-                        asset.CreatureLoader.LoadedAsset.GetComponent<MeshRenderer>().enabled = asset.IsFlying;
+                        asset.CreatureLoaders[0].LoadedAsset.GetComponent<MeshRenderer>().enabled = asset.IsFlying;
                     }
                 }
 
@@ -163,7 +163,7 @@ namespace LordAshes
                         // Show additional GO when not flying
                         requestHandler.transformedAssets.ElementAt(t).Value.enabled = (requestHandler.transformedAssets.ElementAt(t).Key.IsVisible && !requestHandler.transformedAssets.ElementAt(t).Key.IsFlying);
                         // Show original mini when flying
-                        requestHandler.transformedAssets.ElementAt(t).Key.CreatureLoader.LoadedAsset.GetComponent<MeshRenderer>().enabled = (requestHandler.transformedAssets.ElementAt(t).Key.IsVisible && requestHandler.transformedAssets.ElementAt(t).Key.IsFlying);
+                        requestHandler.transformedAssets.ElementAt(t).Key.CreatureLoaders[0].LoadedAsset.GetComponent<MeshRenderer>().enabled = (requestHandler.transformedAssets.ElementAt(t).Key.IsVisible && requestHandler.transformedAssets.ElementAt(t).Key.IsFlying);
                     }
                     catch(System.Exception)
                     {
