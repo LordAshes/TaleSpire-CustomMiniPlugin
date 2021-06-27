@@ -88,6 +88,8 @@ namespace Dummiesman
         /// <returns></returns>
         public static Texture2D LoadTexture(string fn)
         {
+            Debug.Log("Loading texture from '" + fn + "'");
+
             if (!File.Exists(fn))
                 return null;
 
