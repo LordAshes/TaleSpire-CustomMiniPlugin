@@ -11,12 +11,13 @@ namespace LordAshes
     [BepInPlugin(Guid, Name, Version)]
     [BepInDependency(StatMessaging.Guid)]
     [BepInDependency(RadialUI.RadialUIPlugin.Guid)]
+    [BepInDependency(FileAccessPlugin.Guid)]
     public partial class CustomMiniPlugin : BaseUnityPlugin
     {
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "4.5.1.0";
+        public const string Version = "4.6.0.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
@@ -37,23 +38,16 @@ namespace LordAshes
         /// </summary>
         void Awake()
         {
-            UnityEngine.Debug.Log("Custom Mini Plugin Active. Using Custom Minis In '" + dir + "'");
-
-            if (!System.IO.Directory.Exists(dir))
+            // Setup cache settings
+            if(Config.Bind("Settings", "Use Cache For First List", true).Value)
             {
-                // Warn user about not having the TaleSpire_CustomData folder
-                UnityEngine.Debug.LogWarning("Custom Mini Plugin: Your not going to get too far with this plugin if you don't have the '" + dir + "' folder");
-                UnityEngine.Debug.LogWarning("Custom Mini Plugin: I will create it but since it will be empty, you won't be able to use this plugin until you put some content there.");
-                UnityEngine.Debug.LogWarning("Custom Mini Plugin: The good news is that you can drop content there even when TaleSpire is running.");
-                System.IO.Directory.CreateDirectory(dir);
+                UnityEngine.Debug.Log("Custom Mini Plugin Active. Using Cached Asset List. New Assets Cannot Be Added At Runtime.");
+                FileAccessPlugin.File.SetCacheType(FileAccessPlugin.CacheType.CacheCustomData);
             }
-            if (!System.IO.Directory.Exists(dir + "Minis/"))
+            else
             {
-                // Warn user about not having the TaleSpire_CustomData/Minis folder
-                UnityEngine.Debug.LogWarning("Custom Mini Plugin: Your not going to get too far with this plugin if you don't have the '" + dir + "Minis/' folder");
-                UnityEngine.Debug.LogWarning("Custom Mini Plugin: I will create it but since it will be empty, you won't be able to use this plugin until you put some content there.");
-                UnityEngine.Debug.LogWarning("Custom Mini Plugin: The good news is that you can drop content there even when TaleSpire is running.");
-                System.IO.Directory.CreateDirectory(dir + "/Minis/");
+                UnityEngine.Debug.Log("Custom Mini Plugin Active. Not Using Cached Asset List. New Assets Can Be Added At Runtime.");
+                FileAccessPlugin.File.SetCacheType(FileAccessPlugin.CacheType.NoCacheCustomData);
             }
 
             // Setup default trigger
