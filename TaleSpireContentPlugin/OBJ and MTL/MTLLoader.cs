@@ -33,27 +33,17 @@ public class MTLLoader
     /// <returns>Texture2D if found, or NULL if missing</returns>
     public virtual Texture2D TextureLoadFunction(string path, bool isNormalMap)
     {
-        //find it
-        foreach (var searchPath in SearchPaths)
+        //return if eists
+        if (LordAshes.FileAccessPlugin.File.Exists(path))
         {
-            //replace varaibles and combine path
-            string processedPath = (_objFileInfo != null) ? searchPath.Replace("%FileName%", Path.GetFileNameWithoutExtension(_objFileInfo.Name)) 
-                                                          : searchPath;
-            string filePath = Path.Combine(processedPath, path);
+            var tex = LordAshes.FileAccessPlugin.Image.LoadTexture(path);
 
-            //return if eists
-            if (File.Exists(filePath))
-            {
-                var tex = ImageLoader.LoadTexture(filePath);
+            if (isNormalMap) { tex = ImageUtils.ConvertToNormalMap(tex); }
 
-                if(isNormalMap)
-                    tex = ImageUtils.ConvertToNormalMap(tex);
-
-                return tex;
-            }
+            return tex;
         }
-
         //not found
+        Debug.Log("Texture '" + path + "' file does not exist");
         return null;
     }
 
@@ -137,6 +127,8 @@ public class MTLLoader
     /// <returns>Dictionary containing loaded materials</returns>
     public Dictionary<string, Material> Load(Stream input)
     {
+        Debug.Log("Processing MTL file");
+
         var inputReader = new StreamReader(input);
         var reader = new StringReader(inputReader.ReadToEnd());
 
@@ -320,13 +312,10 @@ public class MTLLoader
     /// <returns>Dictionary containing loaded materials</returns>
 	public Dictionary<string, Material> Load(string path)
     {
-        _objFileInfo = new FileInfo(path); //get file info
-        SearchPaths.Add(_objFileInfo.Directory.FullName); //add root path to search dir
-
-        using (var fs = new FileStream(path, FileMode.Open))
+        byte[] content = LordAshes.FileAccessPlugin.File.ReadAllBytes(path);
+        using (MemoryStream ms = new MemoryStream(content))
         {
-            return Load(fs); //actually load
-        }
-        
+            return Load(ms); //actually load
+        }        
     }
 }

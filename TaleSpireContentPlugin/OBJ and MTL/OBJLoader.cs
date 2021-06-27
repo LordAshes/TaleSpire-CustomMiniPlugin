@@ -315,20 +315,6 @@ namespace Dummiesman
         }
 
         /// <summary>
-        /// Load an OBJ and MTL file from a stream.
-        /// </summary>
-        /// <param name="input">Input OBJ stream</param>
-        /// /// <param name="mtlInput">Input MTL stream</param>
-        /// <returns>Returns a GameObject represeting the OBJ file, with each imported object as a child.</returns>
-        public GameObject Load(Stream input, Stream mtlInput)
-        {
-            var mtlLoader = new MTLLoader();
-            Materials = mtlLoader.Load(mtlInput);
-
-            return Load(input);
-        }
-
-        /// <summary>
         /// Load an OBJ and MTL file from a file path.
         /// </summary>
         /// <param name="path">Input OBJ path</param>
@@ -337,33 +323,25 @@ namespace Dummiesman
         public GameObject Load(string path, string mtlPath)
         {
             _objInfo = new FileInfo(path);
-            if (!string.IsNullOrEmpty(mtlPath) && File.Exists(mtlPath))
+            if (!string.IsNullOrEmpty(mtlPath) && LordAshes.FileAccessPlugin.File.Exists(mtlPath))
             {
                 var mtlLoader = new MTLLoader();
                 Materials = mtlLoader.Load(mtlPath);
 
-                using (var fs = new FileStream(path, FileMode.Open))
+                byte[] bytes = LordAshes.FileAccessPlugin.File.ReadAllBytes(path);
+                using (var fs = new MemoryStream(bytes))
                 {
                     return Load(fs);
                 }
             }
             else
             {
-                using (var fs = new FileStream(path, FileMode.Open))
+                byte[] bytes = LordAshes.FileAccessPlugin.File.ReadAllBytes(path);
+                using (var fs = new MemoryStream(bytes))
                 {
                     return Load(fs);
                 }
             }
-        }
-
-        /// <summary>
-        /// Load an OBJ file from a file path. This function will also attempt to load the MTL defined in the OBJ file.
-        /// </summary>
-        /// <param name="path">Input OBJ path</param>
-        /// <returns>Returns a GameObject represeting the OBJ file, with each imported object as a child.</returns>
-        public GameObject Load(string path)
-        {
-            return Load(path, null);
         }
     }
 }

@@ -73,13 +73,18 @@ public class OBJObjectBuilder {
 
 		//locate the material for each submesh
 		Material[] materialArray = new Material[_materialIndices.Count];
-		foreach (var kvp in _materialIndices) {
+		foreach (var kvp in _materialIndices) 
+		{
 			Material material = null;
-			if (_loader.Materials == null) {
+			if (_loader.Materials == null)
+			{
 				material = OBJLoaderHelper.CreateNullMaterial();
 				material.name = kvp.Key;
-			} else {
-				if (!_loader.Materials.TryGetValue(kvp.Key, out material)) {
+			} 
+			else 
+			{
+				if (!_loader.Materials.TryGetValue(kvp.Key, out material))
+				{
 					material = OBJLoaderHelper.CreateNullMaterial();
 					material.name = kvp.Key;
 					_loader.Materials[kvp.Key] = material;
