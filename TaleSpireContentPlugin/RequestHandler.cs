@@ -49,13 +49,13 @@ namespace LordAshes
                         {
                             // Process the request (since remove has a blank value this will trigger mesh removal)
                             Debug.Log("Effect Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
-                            LoadCustomContent(asset, LoadType.effect, CustomMiniPlugin.dir + "Minis/" + change.value + "/" + change.value);
+                            LoadCustomContent(asset, LoadType.effect, (FileAccessPlugin.GetProtocol(change.value)=="") ? (change.value + "/" + change.value) : change.value);
                         }
                         else
                         {
                             // Process the request (since remove has a blank value this will trigger mesh removal)
                             Debug.Log("Transfromation Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
-                            LoadCustomContent(asset, LoadType.mini, CustomMiniPlugin.dir + "Minis/" + change.value + "/" + change.value);
+                            LoadCustomContent(asset, LoadType.mini, (FileAccessPlugin.GetProtocol(change.value) == "") ? (change.value + "/" + change.value) : change.value);
                         }
                     }
                     else
@@ -127,21 +127,50 @@ namespace LordAshes
                     // Look up the content name to see if the actual file has an extenion or not
                     if (System.IO.Path.GetFileNameWithoutExtension(source) != "")
                     {
-                        // Obtain file name of the content
-                        if (System.IO.File.Exists(source))
+                        if (FileAccessPlugin.GetProtocol(source) == "")
                         {
-                            // Asset Bundle
-                        }
-                        else if (System.IO.File.Exists(source + ".OBJ"))
-                        {
-                            // OBJ File
-                            source = source + ".OBJ";
+                            // Local File 
+                            Debug.Log("Using Local File");
+                            string[] seek = FileAccessPlugin.File.Find(source);
+                            bool foundSource = false;
+                            foreach (string item in seek)
+                            {
+                                if (System.IO.Path.GetExtension(item) == "")
+                                {
+                                    // Asset Bundle
+                                    UnityEngine.Debug.Log("Corresponding AssetBundle file exists");
+                                    foundSource = true;
+                                    break;
+                                }
+                                else if (System.IO.Path.GetExtension(item).ToUpper() == ".OBJ")
+                                {
+                                    // OBJ File
+                                    source = source + ".OBJ";
+                                    UnityEngine.Debug.Log("Corresponding OBJ exists");
+                                    foundSource = true;
+                                    break;
+                                }
+                            }
+                            if (!foundSource)
+                            {
+                                // No Compatibale Content Found
+                                UnityEngine.Debug.Log("No corresponding file exists");
+                                if (missingContentCallback != null)
+                                { 
+                                    missingContentCallback(asset.Creature.Name, asset.Creature.CreatureId);
+                                }
+                                else
+                                {
+                                    SystemMessage.DisplayInfoText("'" + source + "' is not found in");
+                                    SystemMessage.DisplayInfoText(dir + "Minis/" + source);
+                                }
+                                return;
+                            }
                         }
                         else
                         {
-                            // No Compatibale Content Found
-                            missingContentCallback(asset.Creature.Name, asset.Creature.CreatureId);
-                            return;
+                            // URL
+                            Debug.Log("Using URL");
                         }
                     }
                     // Remove existing effect or animation object
@@ -157,96 +186,89 @@ namespace LordAshes
                         GameObject.Destroy(GameObject.Find(prefix + asset.Creature.CreatureId));
                     }
                     // If source is blank then we are done now that we destoryed the effect or animation object
-                    if (source == "") { return; }
+                    if (System.IO.Path.GetFileNameWithoutExtension(source) == "") { return; }
 
-                    if (System.IO.File.Exists(source))
+                    GameObject content = null;
+                    // Determine which type of content it is 
+                    switch (System.IO.Path.GetExtension(source).ToUpper())
                     {
-                        GameObject content = null;
-                        // Determine which type of content it is 
-                        switch (System.IO.Path.GetExtension(source).ToUpper())
-                        {
-                            case "": // AssetBundle Source
-                                UnityEngine.Debug.Log("Using AssetBundle Loader");
-                                string assetBundleName = System.IO.Path.GetFileNameWithoutExtension(source);
-                                AssetBundle assetBundle = null;
-                                foreach (AssetBundle ab in AssetBundle.GetAllLoadedAssetBundles())
-                                {
-                                    // Debug.Log("Checking Existing AssetBundles: Found '" + ab.name + "'. Seeking '"+assetBundleName+"'");
-                                    if (ab.name == assetBundleName) { UnityEngine.Debug.Log("AssetBundle Is Already Loaded. Reusing."); assetBundle = ab; break; }
-                                }
-                                if (assetBundle == null) { UnityEngine.Debug.Log("AssetBundle Is Not Already Loaded. Loading."); assetBundle = AssetBundle.LoadFromFile(source); }
-                                content = null;
-                                try
-                                {
-                                    content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(System.IO.Path.GetFileNameWithoutExtension(source)));
-                                }
-                                catch(Exception x)
-                                {
-                                    Debug.Log("Error Instantiating Asset: Asset Source = '" + source+"'");
-                                    Debug.Log("Error Instantiating Asset: " + x);
-                                }
-                                break;
-                            case ".OBJ": // OBJ/MTL Source
-                                UnityEngine.Debug.Log("Using OBJ/MTL Loader");
-                                if (!System.IO.File.Exists(System.IO.Path.GetDirectoryName(source) + "/" + System.IO.Path.GetFileNameWithoutExtension(source) + ".mtl"))
-                                {
-                                    missingContentCallback(asset.Creature.Name + " (" + System.IO.Path.GetDirectoryName(source) + "/" + System.IO.Path.GetFileNameWithoutExtension(source) + ".mtl)", asset.Creature.CreatureId);
-                                }
-                                UnityExtension.ShaderDetector.Reference(System.IO.Path.GetDirectoryName(source) + "/" + System.IO.Path.GetFileNameWithoutExtension(source) + ".mtl");
-                                content = null;
-                                try
-                                {
-                                    content = new OBJLoader().Load(source);
-                                }
-                                catch(Exception x)
-                                {
-                                    Debug.Log("Error Instantiating OBJ/MTL: OBJ Source = '" + source + "'");
-                                    Debug.Log("Error Instantiating OBJ/MTL: " + x);
-                                }
-                                break;
-                            default: // Unrecognized Source
-                                Debug.Log("Content Type '" + System.IO.Path.GetExtension(source).ToUpper() + "' is not supported. Use OBJ/MTL or FBX.");
-                                break;
-                        }
-                        if (content == null) { return; }
-                        content.name = prefix + asset.Creature.CreatureId;
-
-                        // Replace original mimi mesh (used for flying)
-                        float baseRadiusMagicNumber = 0.570697f; // Base size for a regular character
-                        float creatureScaleFactor = content.transform.localScale.x * asset.BaseRadius / baseRadiusMagicNumber;
-                        Debug.Log("(CreatureScale)"+ content.transform.localScale + "x(Base Size)" + asset.BaseRadius + "/(BaseUnitSize)" + baseRadiusMagicNumber + "=(CreatureScale)" + creatureScaleFactor);
-                        asset.CreatureLoaders[0].transform.position = new Vector3(0, 0, 0);
-                        asset.CreatureLoaders[0].transform.rotation = Quaternion.Euler(0, 0, 0);
-                        asset.CreatureLoaders[0].transform.eulerAngles = new Vector3(0, 0, 0);
-                        asset.CreatureLoaders[0].transform.localPosition = new Vector3(0, 0, 0);
-                        asset.CreatureLoaders[0].transform.localRotation = Quaternion.Euler(0, 180, 0);
-                        asset.CreatureLoaders[0].transform.localEulerAngles = new Vector3(0, 180, 0);
-                        asset.CreatureLoaders[0].transform.localScale = new Vector3(content.transform.localScale.x, content.transform.localScale.y, content.transform.localScale.z);
-                        ReplaceGameObjectMesh(content, asset.CreatureLoaders[0].LoadedAsset);
-
-                        // Sync position and rotation to the base and parent it to the base
-                        UnityEngine.Debug.Log("Attaching To Base...");
-                        content.transform.position = asset.CreatureLoaders[0].transform.position;
-                        content.transform.rotation = asset.CreatureLoaders[0].transform.rotation;
-                        content.transform.localScale = new Vector3(creatureScaleFactor, creatureScaleFactor, creatureScaleFactor);
-                        content.transform.SetParent(asset.CreatureLoaders[0].transform);
-
-                        // Register transformation if it isn't an effect
-                        if (!effect)
-                        {
-                            foreach (Renderer check in new Renderer[] { content.GetComponent<MeshRenderer>(), 
-                                                                          content.GetComponentInChildren<MeshRenderer>(),
-                                                                          content.GetComponent<SkinnedMeshRenderer>(),
-                                                                          content.GetComponentInChildren<SkinnedMeshRenderer>(),})
+                        case "": // AssetBundle Source
+                            UnityEngine.Debug.Log("Using AssetBundle Loader");
+                            string assetBundleName = System.IO.Path.GetFileNameWithoutExtension(source);
+                            AssetBundle assetBundle = null;
+                            foreach (AssetBundle ab in AssetBundle.GetAllLoadedAssetBundles())
                             {
-
-                                if (check != null) { transformedAssets.Add(asset, check); break; }
+                                // Debug.Log("Checking Existing AssetBundles: Found '" + ab.name + "'. Seeking '"+assetBundleName+"'");
+                                if (ab.name == assetBundleName) { UnityEngine.Debug.Log("AssetBundle Is Already Loaded. Reusing."); assetBundle = ab; break; }
                             }
-                        }
+                            if (assetBundle == null) { UnityEngine.Debug.Log("AssetBundle Is Not Already Loaded. Loading."); assetBundle = FileAccessPlugin.AssetBundle.Load(source); }
+                            content = null;
+                            try
+                            {
+                                content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(System.IO.Path.GetFileNameWithoutExtension(source)));
+                            }
+                            catch (Exception x)
+                            {
+                                Debug.Log("Error Instantiating Asset: Asset Source = '" + source + "'");
+                                Debug.Log("Error Instantiating Asset: " + x);
+                            }
+                            break;
+                        case ".OBJ": // OBJ/MTL Source
+                            UnityEngine.Debug.Log("Using OBJ/MTL Loader");
+                            if (!FileAccessPlugin.File.Exists(source.Substring(0,source.Length-4) + ".mtl"))
+                            {
+                                if (missingContentCallback!=null) { missingContentCallback(asset.Creature.Name + " (" + source.Substring(0, source.Length - 4) + ".mtl)", asset.Creature.CreatureId); }
+                            }
+                            UnityExtension.ShaderDetector.Reference(source.Substring(0, source.Length - 4) + ".mtl");
+                            content = null;
+                            try
+                            {
+                                content = new OBJLoader().Load(source, source.Substring(0, source.Length - 4) + ".mtl");
+                            }
+                            catch (Exception x)
+                            {
+                                Debug.Log("Error Instantiating OBJ/MTL: OBJ Source = '" + source + "'");
+                                Debug.Log("Error Instantiating OBJ/MTL: " + x);
+                            }
+                            break;
+                        default: // Unrecognized Source
+                            Debug.Log("Content Type '" + System.IO.Path.GetExtension(source).ToUpper() + "' is not supported. Use OBJ/MTL or FBX.");
+                            break;
                     }
-                    else
+                    if (content == null) { return; }
+                    content.name = prefix + asset.Creature.CreatureId;
+
+                    // Replace original mimi mesh (used for flying)
+                    float baseRadiusMagicNumber = 0.570697f; // Base size for a regular character
+                    float creatureScaleFactor = content.transform.localScale.x * asset.BaseRadius / baseRadiusMagicNumber;
+                    Debug.Log("(CreatureScale)" + content.transform.localScale + "x(Base Size)" + asset.BaseRadius + "/(BaseUnitSize)" + baseRadiusMagicNumber + "=(CreatureScale)" + creatureScaleFactor);
+                    asset.CreatureLoaders[0].transform.position = new Vector3(0, 0, 0);
+                    asset.CreatureLoaders[0].transform.rotation = Quaternion.Euler(0, 0, 0);
+                    asset.CreatureLoaders[0].transform.eulerAngles = new Vector3(0, 0, 0);
+                    asset.CreatureLoaders[0].transform.localPosition = new Vector3(0, 0, 0);
+                    asset.CreatureLoaders[0].transform.localRotation = Quaternion.Euler(0, 180, 0);
+                    asset.CreatureLoaders[0].transform.localEulerAngles = new Vector3(0, 180, 0);
+                    asset.CreatureLoaders[0].transform.localScale = new Vector3(content.transform.localScale.x, content.transform.localScale.y, content.transform.localScale.z);
+                    ReplaceGameObjectMesh(content, asset.CreatureLoaders[0].LoadedAsset);
+
+                    // Sync position and rotation to the base and parent it to the base
+                    UnityEngine.Debug.Log("Attaching To Base...");
+                    content.transform.position = asset.CreatureLoaders[0].transform.position;
+                    content.transform.rotation = asset.CreatureLoaders[0].transform.rotation;
+                    content.transform.localScale = new Vector3(creatureScaleFactor, creatureScaleFactor, creatureScaleFactor);
+                    content.transform.SetParent(asset.CreatureLoaders[0].transform);
+
+                    // Register transformation if it isn't an effect
+                    if (!effect)
                     {
-                        SystemMessage.DisplayInfoText("I don't know about\r\n" + System.IO.Path.GetFileNameWithoutExtension(source));
+                        foreach (Renderer check in new Renderer[] { content.GetComponent<MeshRenderer>(),
+                                                                    content.GetComponentInChildren<MeshRenderer>(),
+                                                                    content.GetComponent<SkinnedMeshRenderer>(),
+                                                                    content.GetComponentInChildren<SkinnedMeshRenderer>(),})
+                        {
+
+                            if (check != null) { transformedAssets.Add(asset, check); break; }
+                        }
                     }
                 }
                 catch (Exception) {; }

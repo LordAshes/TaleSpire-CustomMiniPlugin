@@ -17,7 +17,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "4.6.0.0";
+        public const string Version = "4.7.0.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
@@ -31,6 +31,9 @@ namespace LordAshes
 
         // Show Effect Dialog
         private CreatureGuid showEffectDialog = CreatureGuid.Empty;
+
+        // Dialog Open
+        private bool showContentAssit = false;
 
         /// <summary>
         /// Function for initializing plugin
@@ -65,12 +68,12 @@ namespace LordAshes
             RadialUI.RadialSubmenu.EnsureMainMenuItem(  RadialUI.RadialUIPlugin.Guid + ".Transformation",
                                                         RadialUI.RadialSubmenu.MenuType.character,
                                                         "Transformation",
-                                                        RadialUI.RadialSubmenu.GetIconFromFile(dir + "Images/Icons/Transformation.png")
+                                                        FileAccessPlugin.Image.LoadSprite("Images/Icons/Transformation.png")
                                                       );
             // Add effect sub-menu
             RadialUI.RadialSubmenu.CreateSubMenuItem(   RadialUI.RadialUIPlugin.Guid + ".Transformation",
                                                         "Effect",
-                                                        RadialUI.RadialSubmenu.GetIconFromFile(dir + "Images/Icons/Effect.png"),
+                                                        FileAccessPlugin.Image.LoadSprite("Images/Icons/Effect.png"),
                                                         ActivateEffect
                                                     );
 
@@ -113,20 +116,38 @@ namespace LordAshes
                 // Check for Transformation 
                 if (StrictKeyCheck(actionTriggers[0].Value))
                 {
+                    showContentAssit = true;
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Make me a: ", "OK",
-                                                    (s) => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, s); }, null,
-                                                    "Remove", () => { StatMessaging.ClearInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid); },
+                                                    (s) => 
+                                                    { 
+                                                        showContentAssit = false; 
+                                                        StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, s);
+                                                    }, null,
+                                                    "Remove", () => 
+                                                    { 
+                                                        showContentAssit = false; 
+                                                        StatMessaging.ClearInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid); 
+                                                    },
                                                     "");
                 }
 
                 // Check for Effects
                 if (StrictKeyCheck(actionTriggers[1].Value) || showEffectDialog!=CreatureGuid.Empty)
                 {
+                    showContentAssit = true;
                     CreatureGuid active = (showEffectDialog != CreatureGuid.Empty) ? showEffectDialog : LocalClient.SelectedCreatureId;
                     showEffectDialog = CreatureGuid.Empty;
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Add effect: ", "OK",
-                                                    (s) => { StatMessaging.SetInfo(active, CustomMiniPlugin.Guid+".effect", s); }, null,
-                                                    "Remove", () => { StatMessaging.SetInfo(active, CustomMiniPlugin.Guid+".effect", ""); },
+                                                    (s) => 
+                                                    {
+                                                        showContentAssit = false;
+                                                        StatMessaging.SetInfo(active, CustomMiniPlugin.Guid+".effect", s); 
+                                                    }, null,
+                                                    "Remove", () =>
+                                                    {
+                                                        showContentAssit = false;
+                                                        StatMessaging.SetInfo(active, CustomMiniPlugin.Guid+".effect", "");
+                                                    },
                                                     "");
                 }
 
@@ -165,6 +186,20 @@ namespace LordAshes
                         requestHandler.transformedAssets.Remove(requestHandler.transformedAssets.ElementAt(t).Key);
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Method to display the common folder for content (while the transformation/effect dialog is open)
+        /// </summary>
+        public void OnGUI()
+        {
+            if (showContentAssit)
+            {
+                GUIStyle gs = new GUIStyle() { wordWrap = true };
+                gs.normal.textColor = UnityEngine.Color.yellow;
+                gs.alignment = TextAnchor.UpperCenter;
+                GUI.Label(new Rect(15, 35, 1900, 80), "Notice: Ensure That Indicated Content Exists In Folder: "+dir+"Minis/ContentName", gs);
             }
         }
 
