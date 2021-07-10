@@ -36,7 +36,7 @@ public class MTLLoader
         //return if eists
         if (LordAshes.FileAccessPlugin.File.Exists(path))
         {
-            var tex = LordAshes.FileAccessPlugin.Image.LoadTexture(path);
+            var tex = ImageLoader.LoadTexture(LordAshes.FileAccessPlugin.File.Find(path)[0]);
 
             if (isNormalMap) { tex = ImageUtils.ConvertToNormalMap(tex); }
 
