@@ -8,11 +8,15 @@ Now supports assetBundles, assetBundle animations and emotes.
 
 Somewhat Outdated Demo Video: https://youtu.be/sRYln7Gc6Dg
 
-Adding OBJ/MTL Content Video: https://youtu.be/JJ0xJQUM01U
+Adding OBJ/MTL Content Video: https://youtu.be/JJ0xJQUM01U 
 
-(Adding AssetBundle content is very similar to adding OBJ/MTL content)
+Making AssetBundles Content Video: https://youtu.be/VMIengmpbFw
+
+Distributing CMP Content: https://youtu.be/wckyKTD7nPw
 
 ## Change Log
+
+4.8.0: Fixed support for BMP, CRN, DDS, JPG, PNG and TGA texture files
 
 4.7.0: Text at the top of the screen indicates the common TaleSpire_CustomData folder where custom content is expected to be found
        (shows only when one of the transformation dialog windows are open)
