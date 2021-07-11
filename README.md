@@ -16,89 +16,50 @@ Distributing CMP Content: https://youtu.be/wckyKTD7nPw
 
 ## Change Log
 
+4.9.0: Flying mode is now done the same way as regular mode. This means consistent texture (with transparency) and stealth in both modes.
+       This fix also allows animations to be used in fly mode.
 4.8.0: Fixed support for BMP, CRN, DDS, JPG, PNG and TGA texture files
-
 4.7.0: Text at the top of the screen indicates the common TaleSpire_CustomData folder where custom content is expected to be found
        (shows only when one of the transformation dialog windows are open)
-
 4.7.0: When the indicated transformation content is not found, a message indicates the TaleSpire_CustomData folder where it was expected.
-
 4.6.1: Moved CustomData folder to a plugins folder so that the CustomData contents don't get flattened when the plugin is installed
-
 4.6.0: Modified to use FileAccessPlugin for loading assets. This means CMP now supports remote resource specification if desired.
-
 4.6.0: Assets can be in the TaleSpire_CustomData folder (as before) or in any plugin's CustomData sub-folder.
-
 4.5.1: Modification to get core TS Emotes working with CMP transformed assets
-
 4.5.0: Fix for compatability with TS Build 6913204 and newer.
-
 4.4.0: Access to CMP Effect is available from Radial menu from Transformation icon and then Effect icon
-
 4.4.0: When a smaller or larger base is used to transform, the contents now load at the scaled size
-
 4.3.1: Re-added posting of the plugin to the TaleSpire main page (which was accidentally removed in 4.3.0)
-
 4.3.0: AssetBundle animations for both effects and minis are supported
-
 4.3.0: Shortcut keys to play Anim1, Anim2, ..., Anim5
-
 4.3.0: Shortcut key to open dialog for playing animation by name
-
 4.2.1: Plugin is now shown on TaleSpire main page
-
 4.2.1: Fixed issue with removal of old transformation when a new transformation is applied
-
 4.2.0: Re-added animations and sounds for effects (not for mini transformations)
-
 4.2.0: Fixed effect position issue 
-
 4.1.0: Fixed height bar for transformed minis
-
 4.1.0: Stealth now uses core TS mecahnism so stealth syncing is no longer needed in the update loop
-
 4.1.0: PNG and JPG files can now be used without internal conversion to BMP
-
 4.0.2: Correctly identifies the Stat Messaging plugin as a dependency onm Thunderstore
-
 4.0.0: Fixed Fly and Emotes.
-
 4.0.0: Uses Stat Messaging for synchronization of the transforms for higher compatability with other plugins. 
-
 4.0.0: Major overhaul to actually replace the core mini mesh instead of attaching a game object to it.
-
 3.2.0: Exposed StatHandler and provided callback for content load fails to allow plugin to be used as a dependency plugin.
-
 3.1.1: Bug fix and readme correction. Effect are triggered with Left CTRL + E (not T).
-
 3.1.0: Added effects support (Left CTRL + E). Like mini transformation but does not delete the character mesh.
-
 3.1.0: Added remove buttons to the transformation dialogs to remove transformations.
-
 3.1.0: Fixed issue with OBJ/MTL content
-
 3.0.0: Added assetBundle support
-
 3.0.0: Added animation support
-
 2.0.0: Blank base is no longer needed
-
 2.0.0: Transformation are automatically restored on loaded
-
 2.0.0: Trasformation triggered using CTRL+M (can be changed in R2ModMan)
-
 2.0.0: Moved from Chat distribution to Name distribution
-
 1.6.1: Exposed Plugin Guid to allow it to be marked as a dependency
-
 1.6.0: OBJ, MTL and texture files expected in a minis folder and then a sub-folder named after the asset (e.g. TaleSpire_CustomData\Minis\Wizard\Wizard.obj)
-
 1.6.0: Added fake JPG and PNG support. Asset can use JPG/PNG textures which the plugin automatically converts to BMPs.
-
 1.5.0: Fixed shader bug. Content uses the Standard shader (not the TaleSpire\Creature shader).
-
 1.5.0: OBJ, MTL and texture files expected in a sub folder named after the asset (e.g. TaleSpire_CustomData\Wizard\Wizard.obj)
-
 1.5.0: Includes the TaleSpire_CustomData folder in ZIP along with a Test content
 
 ## Install
@@ -188,18 +149,8 @@ until a different animation/pose is activated.
 
 ## Limitations
 
-### Stealth & Height Bar
-
-The current implementation works with Steath Mode and Height Bar although the asset is hidden instead of being moved off the screen
-when the height bar is low enough. However this is just a cosmetic difference and works the same otherwise.  
-
-### Fly Mode
-
-Fly mode does odd things with the mini. To make fly mode work, CMP makes the original mini visible with its mesh transformed. This
-prevents the mini from disappearing during fly mode. However, this can cause shading differences since the original minis use the
-TS/Creature shader whereas most custom assest do not. There is no current work around for this except to create custom assets as
-assetBundles which use the TS/Creature shader. Hovever, this is a cosmetic issue, besides the shading difference fly mode works as
-expected. 
+1. When a mini is stealthed, in GM mode only the base is visible.
+2. When a mini is flying and stealthed, in GM mode nothing is visible but the mini can still be selected (e.g. to unstealth it).
 
 ### Multi-Creature Assets
 
@@ -223,5 +174,3 @@ shortcut keys, again and enter the desired transformation (like applying it for 
 
 You can also reload the last board with full CMP processing by restarting TaleSpire. In such a case, the CMP plugin is restarted
 and thus any transformation requests become new requests.
-
-
