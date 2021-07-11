@@ -16,6 +16,7 @@ Distributing CMP Content: https://youtu.be/wckyKTD7nPw
 
 ## Change Log
 
+4.9.1: Bug fix to support both MeshRenderer and SkinnedMeshRenderer assets.
 4.9.0: Flying mode is now done the same way as regular mode. This means consistent texture (with transparency) and stealth in both modes.
        This fix also allows animations to be used in fly mode.
 4.8.0: Fixed support for BMP, CRN, DDS, JPG, PNG and TGA texture files
