@@ -5,6 +5,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using UnityEngine;
 using System;
+using DataModel;
 
 namespace LordAshes
 {
@@ -17,7 +18,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "4.9.0.0";
+        public const string Version = "4.9.1.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
@@ -159,14 +160,21 @@ namespace LordAshes
                 {
                     CreatureBoardAsset asset;
                     CreaturePresenter.TryGetAsset(mini.Key, out asset);
-                    if(asset==null)
+                    if (asset==null)
                     {
                         Debug.Log("Queuing '" + removeList.ElementAt(0) + "' For Removal From The Transfromation List");
                         removeList.Add(mini.Key);
                     }
                     else
                     {
-                        mini.Value.go.GetComponentInChildren<SkinnedMeshRenderer>().enabled = !asset.Creature.IsExplicitlyHidden & (asset.transform.position.y < CameraController.HidePlaneHeight);
+                        try
+                        {
+                            mini.Value.go.GetComponentInChildren<MeshRenderer>().enabled = !asset.Creature.IsExplicitlyHidden & (asset.transform.position.y < CameraController.HidePlaneHeight);
+                        }
+                        catch(Exception)
+                        {
+                            mini.Value.go.GetComponentInChildren<SkinnedMeshRenderer>().enabled = !asset.Creature.IsExplicitlyHidden & (asset.transform.position.y < CameraController.HidePlaneHeight);
+                        }
                         try
                         {
                             if (asset.IsFlying && mini.Value.parent != 1)
@@ -189,7 +197,7 @@ namespace LordAshes
                         }
                     }
                 }
-                while(true)
+                while (true)
                 {
                     if (removeList.Count <= 0) { break; }
                     Debug.Log("Removing '" + removeList.ElementAt(0) + "' From The Transfromation List");
