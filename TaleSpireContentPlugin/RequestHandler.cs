@@ -9,10 +9,17 @@ namespace LordAshes
 {
     public partial class CustomMiniPlugin : BaseUnityPlugin
     {
+        public class Transformation
+        {
+            public GameObject go { get; set; } = null;
+            public Transform[] parents { get; set; } = null;
+            public int parent { get; set; } = 0;
+        }
+
         public class RequestHandler
         {
             // Directory for custom content
-            public Dictionary<CreatureBoardAsset, Renderer> transformedAssets = new Dictionary<CreatureBoardAsset, Renderer>();
+            public Dictionary<CreatureGuid, Transformation> transformedAssets = new Dictionary<CreatureGuid, Transformation>();
 
             /// <summary>
             /// Callback method that is informed by StatMessaging when the Stat Block has changed.
@@ -177,8 +184,11 @@ namespace LordAshes
                     if (!effect)
                     {
                         Debug.Log("Destorying '" + CustomMiniPlugin.GetCreatureName(asset.Creature) + "' mesh...");
+                        Debug.Log("Removing Item From Transform List...");
+                        transformedAssets.Remove(asset.Creature.CreatureId);
+                        Debug.Log("Destroying Corresponding GO...");
                         GameObject.Destroy(GameObject.Find(prefix + asset.Creature.CreatureId));
-                        transformedAssets.Remove(asset);
+                        
                     }
                     else
                     {
@@ -249,7 +259,11 @@ namespace LordAshes
                     asset.CreatureLoaders[0].transform.localRotation = Quaternion.Euler(0, 180, 0);
                     asset.CreatureLoaders[0].transform.localEulerAngles = new Vector3(0, 180, 0);
                     asset.CreatureLoaders[0].transform.localScale = new Vector3(content.transform.localScale.x, content.transform.localScale.y, content.transform.localScale.z);
-                    ReplaceGameObjectMesh(content, asset.CreatureLoaders[0].LoadedAsset);
+                    foreach(AssetLoader loader in asset.CreatureLoaders)
+                    {
+                        Debug.Log("Removing Original Mini Mesh...");
+                        loader.LoadedAsset.GetComponent<MeshFilter>().mesh.triangles = new int[0];
+                    }
 
                     // Sync position and rotation to the base and parent it to the base
                     UnityEngine.Debug.Log("Attaching To Base...");
@@ -261,81 +275,15 @@ namespace LordAshes
                     // Register transformation if it isn't an effect
                     if (!effect)
                     {
-                        foreach (Renderer check in new Renderer[] { content.GetComponent<MeshRenderer>(),
-                                                                    content.GetComponentInChildren<MeshRenderer>(),
-                                                                    content.GetComponent<SkinnedMeshRenderer>(),
-                                                                    content.GetComponentInChildren<SkinnedMeshRenderer>(),})
+                        transformedAssets.Add(asset.Creature.CreatureId, new Transformation
                         {
-
-                            if (check != null) { transformedAssets.Add(asset, check); break; }
-                        }
+                            go = GameObject.Find(prefix + asset.Creature.CreatureId),
+                            parent = ((asset.IsFlying) ? 1 : 0),
+                            parents = new Transform[] { asset.CreatureLoaders[0].transform, asset.FlyingIndicator.transform },
+                        }); 
                     }
                 }
                 catch (Exception) {; }
-            }
-
-            /// <summary>
-            /// Method to replace the destination MeshFilter and MeshRenderer with that of the source.
-            /// Since component cannot be actually switched, all properties are copied over.
-            /// </summary>
-            /// <param name="source"></param>
-            /// <param name="destination"></param>
-            public void ReplaceGameObjectMesh(GameObject source, GameObject destination)
-            {
-                MeshFilter dMF = destination.GetComponent<MeshFilter>();
-                MeshRenderer dMR = destination.GetComponent<MeshRenderer>();
-                if (dMF == null || dMR == null) { Debug.LogWarning("Unable get destination MF or MR."); return; }
-
-                destination.transform.position = new Vector3(0, 0, 0);
-                destination.transform.rotation = Quaternion.Euler(0, 0, 0);
-                destination.transform.eulerAngles = new Vector3(0, 0, 0);
-                destination.transform.localPosition = new Vector3(0, 0, 0);
-                destination.transform.localRotation = Quaternion.Euler(0, 0, 0);
-                destination.transform.localEulerAngles = new Vector3(0, 0, 0);
-                destination.transform.localScale = new Vector3(1f, 1f, 1f);
-
-                dMF.transform.position = new Vector3(0, 0, 0);
-                dMF.transform.rotation = Quaternion.Euler(0, 0, 0);
-                dMF.transform.eulerAngles = new Vector3(0, 0, 0);
-                dMF.transform.localPosition = new Vector3(0, 0, 0);
-                dMF.transform.localRotation = Quaternion.Euler(0, 0, 0);
-                dMF.transform.localEulerAngles = new Vector3(0, 0, 0);
-                dMF.transform.localScale = new Vector3(1, 1, 1);
-
-                dMR.transform.position = new Vector3(0, 0, 0);
-                dMR.transform.rotation = Quaternion.Euler(0, 0, 0);
-                dMR.transform.eulerAngles = new Vector3(0, 0, 0);
-                dMR.transform.localPosition = new Vector3(0, 0, 0);
-                dMR.transform.localRotation = Quaternion.Euler(0, 0, 0);
-                dMR.transform.localEulerAngles = new Vector3(0, 0, 0);
-                dMR.transform.localScale = new Vector3(1, 1, 1);
-
-                MeshFilter sMF = (source.GetComponent<MeshFilter>() != null) ? source.GetComponent<MeshFilter>() : source.GetComponentInChildren<MeshFilter>();
-                if (sMF != null)
-                {
-                    Debug.Log("Copying MF->MF");
-                    dMF.mesh = sMF.mesh;
-                    dMF.sharedMesh = sMF.sharedMesh;
-                }
-
-                MeshRenderer sMR = (source.GetComponent<MeshRenderer>() != null) ? source.GetComponent<MeshRenderer>() : source.GetComponentInChildren<MeshRenderer>();
-                if (sMR != null)
-                {
-                    Debug.Log("Copying MR->MR");
-                    Shader shaderSave = dMR.material.shader;  // Shader must be maintained in order for the Stealth mode to work automatically
-                    dMR.sharedMaterials = sMR.sharedMaterials;
-                    dMR.material.shader = shaderSave;
-                }
-
-                SkinnedMeshRenderer sSMR = (source.GetComponent<SkinnedMeshRenderer>() != null) ? source.GetComponent<SkinnedMeshRenderer>() : source.GetComponentInChildren<SkinnedMeshRenderer>();
-                if (sSMR != null)
-                {
-                    Debug.Log("Copying SMR->MF/MR");
-                    dMF.sharedMesh = sSMR.sharedMesh;
-                    Shader shaderSave = dMR.material.shader; // Shader must be maintained in order for the Stealth mode to work automatically
-                    dMR.material = sSMR.material;
-                    dMR.material.shader = shaderSave;
-                }
             }
 
             public enum LoadType

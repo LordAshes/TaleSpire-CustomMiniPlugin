@@ -17,7 +17,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "4.8.0.0";
+        public const string Version = "4.9.0.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
@@ -71,10 +71,12 @@ namespace LordAshes
                                                         FileAccessPlugin.Image.LoadSprite("Images/Icons/Transformation.png")
                                                       );
             // Add effect sub-menu
-            RadialUI.RadialSubmenu.CreateSubMenuItem(   RadialUI.RadialUIPlugin.Guid + ".Transformation",
+            RadialUI.RadialSubmenu.CreateSubMenuItem(RadialUI.RadialUIPlugin.Guid + ".Transformation",
                                                         "Effect",
                                                         FileAccessPlugin.Image.LoadSprite("Images/Icons/Effect.png"),
-                                                        ActivateEffect
+                                                        ActivateEffect,
+                                                        true,
+                                                        null
                                                     );
 
             // Activate State Detection Board Subscription 
@@ -94,25 +96,6 @@ namespace LordAshes
         {
             if (StateDetection.Ready())
             {
-
-                // Implement stealth mode, height bar mode and fly mode
-                foreach (CreatureBoardAsset asset in CreaturePresenter.AllCreatureAssets)
-                {
-                    GameObject go = GameObject.Find("CustomContent:" + asset.Creature.CreatureId);
-                    if (go != null)
-                    {
-                        if (go.GetComponentInChildren<SkinnedMeshRenderer>() != null)
-                        { 
-                            go.GetComponentInChildren<SkinnedMeshRenderer>().enabled = !asset.Creature.IsExplicitlyHidden & !asset.IsFlying & (asset.transform.position.y < CameraController.HidePlaneHeight); 
-                        }
-                        else if (go.GetComponentInChildren<MeshRenderer>() != null) 
-                        { 
-                            go.GetComponentInChildren<MeshRenderer>().enabled = !asset.Creature.IsExplicitlyHidden & !asset.IsFlying & (asset.transform.position.y < CameraController.HidePlaneHeight);
-                        }
-                        asset.CreatureLoaders[0].LoadedAsset.GetComponent<MeshRenderer>().enabled = asset.IsFlying;
-                    }
-                }
-
                 // Check for Transformation 
                 if (StrictKeyCheck(actionTriggers[0].Value))
                 {
@@ -170,21 +153,48 @@ namespace LordAshes
                     }
                 }
 
-                // Sync stealth mode & height bar
-                for(int t=0; t<requestHandler.transformedAssets.Count; t++)
+                // Flying & Stealth
+                List<CreatureGuid> removeList = new List<CreatureGuid>();
+                foreach(KeyValuePair<CreatureGuid,Transformation> mini in requestHandler.transformedAssets)
                 {
-                    try
+                    CreatureBoardAsset asset;
+                    CreaturePresenter.TryGetAsset(mini.Key, out asset);
+                    if(asset==null)
                     {
-                        // Show additional GO when not flying
-                        requestHandler.transformedAssets.ElementAt(t).Value.enabled = (requestHandler.transformedAssets.ElementAt(t).Key.IsVisible && !requestHandler.transformedAssets.ElementAt(t).Key.IsFlying);
-                        // Show original mini when flying
-                        requestHandler.transformedAssets.ElementAt(t).Key.CreatureLoaders[0].LoadedAsset.GetComponent<MeshRenderer>().enabled = (requestHandler.transformedAssets.ElementAt(t).Key.IsVisible && requestHandler.transformedAssets.ElementAt(t).Key.IsFlying);
+                        Debug.Log("Queuing '" + removeList.ElementAt(0) + "' For Removal From The Transfromation List");
+                        removeList.Add(mini.Key);
                     }
-                    catch(System.Exception)
+                    else
                     {
-                        // Creature deleted - remove from transformation list
-                        requestHandler.transformedAssets.Remove(requestHandler.transformedAssets.ElementAt(t).Key);
+                        mini.Value.go.GetComponentInChildren<SkinnedMeshRenderer>().enabled = !asset.Creature.IsExplicitlyHidden & (asset.transform.position.y < CameraController.HidePlaneHeight);
+                        try
+                        {
+                            if (asset.IsFlying && mini.Value.parent != 1)
+                            {
+                                Debug.Log("Creature " + StatMessaging.GetCreatureName(asset.Creature) + " started flying...");
+                                mini.Value.parent = 1;
+                                mini.Value.go.transform.SetParent(mini.Value.parents[mini.Value.parent]);
+                            }
+                            else if (!asset.IsFlying && mini.Value.parent != 0)
+                            {
+                                Debug.Log("Creature " + StatMessaging.GetCreatureName(asset.Creature) + " stopped flying...");
+                                mini.Value.parent = 0;
+                                mini.Value.go.transform.SetParent(mini.Value.parents[mini.Value.parent]);
+                                mini.Value.go.transform.localPosition = Vector3.zero;
+                            }
+                        }
+                        catch (Exception x)
+                        {
+                            Debug.Log(x);
+                        }
                     }
+                }
+                while(true)
+                {
+                    if (removeList.Count <= 0) { break; }
+                    Debug.Log("Removing '" + removeList.ElementAt(0) + "' From The Transfromation List");
+                    requestHandler.transformedAssets.Remove(removeList.ElementAt(0));
+                    removeList.RemoveAt(0);
                 }
             }
         }
