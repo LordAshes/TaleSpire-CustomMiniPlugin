@@ -9,17 +9,10 @@ namespace LordAshes
 {
     public partial class CustomMiniPlugin : BaseUnityPlugin
     {
-        public class Transformation
-        {
-            public GameObject go { get; set; } = null;
-            public Transform[] parents { get; set; } = null;
-            public int parent { get; set; } = 0;
-        }
-
         public class RequestHandler
         {
-            // Directory for custom content
-            public Dictionary<CreatureGuid, Transformation> transformedAssets = new Dictionary<CreatureGuid, Transformation>();
+            // Playing Animation Status
+            public List<CreatureBoardAsset> playingAnimation = new List<CreatureBoardAsset>();
 
             /// <summary>
             /// Callback method that is informed by StatMessaging when the Stat Block has changed.
@@ -96,6 +89,10 @@ namespace LordAshes
                             if (state.name==animationName)
                             {
                                 // Play animation
+                                Debug.Log("Switching " + StatMessaging.GetCreatureName(asset.Creature) + " (" + asset.Creature.CreatureId + ") to GO renderer");
+                                FindRenderer(asset.CreatureLoaders[0]).enabled = false;
+                                FindRenderer(animationObject).enabled = true;
+                                playingAnimation.Add(asset);
                                 Debug.Log("Activating Animation");
                                 anim.Stop();
                                 anim.Play(state.name);
@@ -125,171 +122,224 @@ namespace LordAshes
             {
                 try
                 {
-                    UnityEngine.Debug.Log("Customizing Mini '" + CustomMiniPlugin.GetCreatureName(asset.Creature) + "' Using '" + source + "' Type '" + style.ToString() + "'...");
+                    UnityEngine.Debug.Log("Customizing Mini '" + StatMessaging.GetCreatureName(asset.Creature) + "' Using '" + source + "' Type '" + style.ToString() + "'...");
 
-                    // Effects are prefixed by # tag
-                    bool effect = (style == LoadType.effect);
-                    string prefix = (effect) ? "CustomEffect:" : "CustomContent:";
+                    string prefix = (style == LoadType.effect) ? "CustomEffect:" : "CustomContent:";
 
-                    // Look up the content name to see if the actual file has an extenion or not
-                    if (System.IO.Path.GetFileNameWithoutExtension(source) != "")
-                    {
-                        if (FileAccessPlugin.GetProtocol(source) == "")
+                    if(GameObject.Find(prefix + asset.Creature.CreatureId) != null)
+                    { 
+                        // Destroy previous GO if there was one
+                        GameObject.Destroy(GameObject.Find(prefix + asset.Creature.CreatureId));
+                        // Remove current mesh(s) in case original mini has multiple CreatureLoaders if transformation is a mini transformation
+                        if (style == LoadType.mini)
                         {
-                            // Local File 
-                            Debug.Log("Using Local File");
-                            string[] seek = FileAccessPlugin.File.Find(source);
-                            bool foundSource = false;
-                            foreach (string item in seek)
+                            foreach (AssetLoader loader in asset.CreatureLoaders)
                             {
-                                if (System.IO.Path.GetExtension(item) == "")
-                                {
-                                    // Asset Bundle
-                                    UnityEngine.Debug.Log("Corresponding AssetBundle file exists");
-                                    foundSource = true;
-                                    break;
-                                }
-                                else if (System.IO.Path.GetExtension(item).ToUpper() == ".OBJ")
-                                {
-                                    // OBJ File
-                                    source = source + ".OBJ";
-                                    UnityEngine.Debug.Log("Corresponding OBJ exists");
-                                    foundSource = true;
-                                    break;
-                                }
+                                loader.LoadedAsset.GetComponent<MeshFilter>().mesh.triangles = new int[0];
                             }
-                            if (!foundSource)
-                            {
-                                // No Compatibale Content Found
-                                UnityEngine.Debug.Log("No corresponding file exists");
-                                if (missingContentCallback != null)
-                                { 
-                                    missingContentCallback(asset.Creature.Name, asset.Creature.CreatureId);
-                                }
-                                else
-                                {
-                                    SystemMessage.DisplayInfoText("'" + source + "' is not found in");
-                                    SystemMessage.DisplayInfoText(dir + "Minis/" + source);
-                                }
-                                return;
-                            }
-                        }
-                        else
-                        {
-                            // URL
-                            Debug.Log("Using URL");
                         }
                     }
-                    // Remove existing effect or animation object
-                    if (!effect)
+                    // Exit if a remove request was issued
+                    if (source == "/") { return; }
+
+                    // Find the indicated source file(s)
+                    string[] fullPathSources = FileAccessPlugin.File.Find(source);
+                    bool foundUsableSource = false;
+                    GameObject content = null;
+                    foreach (string fullPathSource in fullPathSources)
                     {
-                        Debug.Log("Destorying '" + CustomMiniPlugin.GetCreatureName(asset.Creature) + "' mesh...");
-                        Debug.Log("Removing Item From Transform List...");
-                        transformedAssets.Remove(asset.Creature.CreatureId);
-                        Debug.Log("Destroying Corresponding GO...");
-                        GameObject.Destroy(GameObject.Find(prefix + asset.Creature.CreatureId));
-                        
+                        Debug.Log("Found '" + fullPathSource + "' (" + System.IO.Path.GetExtension(fullPathSource).ToUpper() + ")");
+                        switch(System.IO.Path.GetExtension(fullPathSource).ToUpper())
+                        {
+                            case ".OBJ":// OBJ/MTL Source
+                                Debug.Log("OBJ/MTL Content Load From " + fullPathSource);
+                                string mtlFile = fullPathSource.Substring(0, fullPathSource.Length - 4) + ".mtl";
+                                Debug.Log("Looking for '" + mtlFile + "'");
+                                if (!FileAccessPlugin.File.Exists(mtlFile))
+                                {
+                                    if (missingContentCallback != null) { missingContentCallback(asset.Creature.Name + " (" +mtlFile+ ")", asset.Creature.CreatureId); }
+                                }
+                                UnityExtension.ShaderDetector.Reference(mtlFile);
+                                content = null;
+                                try { content = new OBJLoader().Load(fullPathSource, mtlFile); } catch (Exception) { ; }
+                                foundUsableSource = true;
+                                break;
+                            case "": // AssetBundle Source
+                                string assetBundleName = System.IO.Path.GetFileNameWithoutExtension(source);
+                                Debug.Log("AssetBundle '"+ assetBundleName + "' Content Load From "+ fullPathSource);
+                                AssetBundle assetBundle = null;
+                                foreach (AssetBundle ab in AssetBundle.GetAllLoadedAssetBundles())
+                                {
+                                    if (ab.name == assetBundleName) { assetBundle = ab; break; }
+                                }
+                                if (assetBundle != null)
+                                {
+                                    UnityEngine.Debug.Log("AssetBundle Is Already Loaded. Reusing.");
+                                }
+                                else
+                                { 
+                                    UnityEngine.Debug.Log("AssetBundle Is Not Already Loaded. Loading.");
+                                    assetBundle = FileAccessPlugin.AssetBundle.Load(source); 
+                                }
+                                content = null;
+                                try { content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(System.IO.Path.GetFileNameWithoutExtension(source))); } catch(Exception) {;}
+                                foundUsableSource = true;
+                                break;
+                            default:
+                                break;
+                        }
+                        if (foundUsableSource) { break; }
+                    }
+                    if((!foundUsableSource) || (content==null))
+                    {
+                        if (missingContentCallback != null)
+                        {
+                            missingContentCallback(asset.Creature.Name, asset.Creature.CreatureId);
+                        }
+                        SystemMessage.DisplayInfoText("Unable To Load AssetBundle Or OBJ/MTL Files From\r\n" + source);
+                        SystemMessage.DisplayInfoText("Ensure content files exist in folder\r\n"+dir+"Minis/"+source);
+                        return;
+                    }
+
+                    // Rename template GO in case it is used for animations
+                    content.name = prefix + asset.Creature.CreatureId;
+
+                    if (style == LoadType.mini)
+                    {
+                        // Replace original mini mesh and material
+                        Debug.Log("Replacing originl mini mesh");
+                        float baseRadiusMagicNumber = 0.570697f; // Base size for a regular character
+                        float creatureScaleFactor = content.transform.localScale.x * asset.BaseRadius / baseRadiusMagicNumber;
+                        Debug.Log("(CreatureScale)" + content.transform.localScale + "x(Base Size)" + asset.BaseRadius + "/(BaseUnitSize)" + baseRadiusMagicNumber + "=(CreatureScale)" + creatureScaleFactor);
+                        asset.CreatureLoaders[0].transform.localScale = new Vector3(content.transform.localScale.x, content.transform.localScale.y, content.transform.localScale.z);
+                        ReplaceGameObjectMesh(content, asset.CreatureLoaders[0].LoadedAsset);
+                        asset.CreatureLoaders[0].transform.localPosition = new Vector3(0, 0, 0);
+                    }
+
+                    // Attach GO only if content has animation
+                    if(style == LoadType.effect || content.GetComponent<Animation>()!=null)
+                    {
+                        // Attach GO for effects or animated minis. Turn renderer off until needed.
+                        Debug.Log("Attaching GO for effects or animated minis");
+                        content.transform.position = asset.BaseLoader.transform.position;
+                        content.transform.rotation = asset.BaseLoader.transform.rotation;
+                        content.transform.SetParent(asset.BaseLoader.transform);
+                        if (style == LoadType.mini)
+                        {
+                            // Hide GO object if the mini is an animated mini (as opposed to an effect)
+                            Debug.Log("Turning off GO renderer for animated minis");
+                            FindRenderer(content).enabled = false;
+                        }
                     }
                     else
                     {
-                        Debug.Log("Destorying '" + CustomMiniPlugin.GetCreatureName(asset.Creature) + "' effect...");
-                        GameObject.Destroy(GameObject.Find(prefix + asset.Creature.CreatureId));
-                    }
-                    // If source is blank then we are done now that we destoryed the effect or animation object
-                    if (System.IO.Path.GetFileNameWithoutExtension(source) == "") { return; }
-
-                    GameObject content = null;
-                    // Determine which type of content it is 
-                    switch (System.IO.Path.GetExtension(source).ToUpper())
-                    {
-                        case "": // AssetBundle Source
-                            UnityEngine.Debug.Log("Using AssetBundle Loader");
-                            string assetBundleName = System.IO.Path.GetFileNameWithoutExtension(source);
-                            AssetBundle assetBundle = null;
-                            foreach (AssetBundle ab in AssetBundle.GetAllLoadedAssetBundles())
-                            {
-                                // Debug.Log("Checking Existing AssetBundles: Found '" + ab.name + "'. Seeking '"+assetBundleName+"'");
-                                if (ab.name == assetBundleName) { UnityEngine.Debug.Log("AssetBundle Is Already Loaded. Reusing."); assetBundle = ab; break; }
-                            }
-                            if (assetBundle == null) { UnityEngine.Debug.Log("AssetBundle Is Not Already Loaded. Loading."); assetBundle = FileAccessPlugin.AssetBundle.Load(source); }
-                            content = null;
-                            try
-                            {
-                                content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(System.IO.Path.GetFileNameWithoutExtension(source)));
-                            }
-                            catch (Exception x)
-                            {
-                                Debug.Log("Error Instantiating Asset: Asset Source = '" + source + "'");
-                                Debug.Log("Error Instantiating Asset: " + x);
-                            }
-                            break;
-                        case ".OBJ": // OBJ/MTL Source
-                            UnityEngine.Debug.Log("Using OBJ/MTL Loader");
-                            if (!FileAccessPlugin.File.Exists(source.Substring(0,source.Length-4) + ".mtl"))
-                            {
-                                if (missingContentCallback!=null) { missingContentCallback(asset.Creature.Name + " (" + source.Substring(0, source.Length - 4) + ".mtl)", asset.Creature.CreatureId); }
-                            }
-                            UnityExtension.ShaderDetector.Reference(source.Substring(0, source.Length - 4) + ".mtl");
-                            content = null;
-                            try
-                            {
-                                content = new OBJLoader().Load(source, source.Substring(0, source.Length - 4) + ".mtl");
-                            }
-                            catch (Exception x)
-                            {
-                                Debug.Log("Error Instantiating OBJ/MTL: OBJ Source = '" + source + "'");
-                                Debug.Log("Error Instantiating OBJ/MTL: " + x);
-                            }
-                            break;
-                        default: // Unrecognized Source
-                            Debug.Log("Content Type '" + System.IO.Path.GetExtension(source).ToUpper() + "' is not supported. Use OBJ/MTL or FBX.");
-                            break;
-                    }
-                    if (content == null) { return; }
-                    content.name = prefix + asset.Creature.CreatureId;
-
-                    // Replace original mimi mesh (used for flying)
-                    float baseRadiusMagicNumber = 0.570697f; // Base size for a regular character
-                    float creatureScaleFactor = content.transform.localScale.x * asset.BaseRadius / baseRadiusMagicNumber;
-                    Debug.Log("(CreatureScale)" + content.transform.localScale + "x(Base Size)" + asset.BaseRadius + "/(BaseUnitSize)" + baseRadiusMagicNumber + "=(CreatureScale)" + creatureScaleFactor);
-                    asset.CreatureLoaders[0].transform.position = new Vector3(0, 0, 0);
-                    asset.CreatureLoaders[0].transform.rotation = Quaternion.Euler(0, 0, 0);
-                    asset.CreatureLoaders[0].transform.eulerAngles = new Vector3(0, 0, 0);
-                    asset.CreatureLoaders[0].transform.localPosition = new Vector3(0, 0, 0);
-                    asset.CreatureLoaders[0].transform.localRotation = Quaternion.Euler(0, 180, 0);
-                    asset.CreatureLoaders[0].transform.localEulerAngles = new Vector3(0, 180, 0);
-                    asset.CreatureLoaders[0].transform.localScale = new Vector3(content.transform.localScale.x, content.transform.localScale.y, content.transform.localScale.z);
-                    foreach(AssetLoader loader in asset.CreatureLoaders)
-                    {
-                        Debug.Log("Removing Original Mini Mesh...");
-                        loader.LoadedAsset.GetComponent<MeshFilter>().mesh.triangles = new int[0];
-                    }
-
-                    // Sync position and rotation to the base and parent it to the base
-                    UnityEngine.Debug.Log("Attaching To Base...");
-                    content.transform.position = asset.CreatureLoaders[0].transform.position;
-                    content.transform.rotation = asset.CreatureLoaders[0].transform.rotation;
-                    content.transform.localScale = new Vector3(creatureScaleFactor, creatureScaleFactor, creatureScaleFactor);
-                    content.transform.SetParent(asset.CreatureLoaders[0].transform);
-
-                    // Register transformation if it isn't an effect
-                    if (!effect)
-                    {
-                        transformedAssets.Add(asset.Creature.CreatureId, new Transformation
-                        {
-                            go = GameObject.Find(prefix + asset.Creature.CreatureId),
-                            parent = ((asset.IsFlying) ? 1 : 0),
-                            parents = new Transform[] { asset.CreatureLoaders[0].transform, asset.FlyingIndicator.transform },
-                        }); 
+                        // Destroy template GO object if the object is a non-animated mini
+                        Debug.Log("Removing template GO for non-animated minis");
+                        GameObject.Destroy(content);
                     }
                 }
-                catch (Exception) {; }
+                catch (Exception x)
+                {
+                    Debug.Log("CMP encountered a exception in LoadCustomContent(): " + x);
+                }
+            }
+
+            /// <summary>
+            /// Method to replace the destination MeshFilter and MeshRenderer with that of the source.
+            /// Since component cannot be actually switched, all properties are copied over.
+            /// </summary>
+            /// <param name="source"></param>
+            /// <param name="destination"></param>
+            public void ReplaceGameObjectMesh(GameObject source, GameObject destination)
+            {
+                if (destination == null) { Debug.Log("Destination Is Null"); }
+                MeshFilter dMF = destination.GetComponent<MeshFilter>();
+                MeshRenderer dMR = destination.GetComponent<MeshRenderer>();
+                if (dMF == null || dMR == null) { Debug.LogWarning("Unable get destination MF or MR."); return; }
+
+                // destination.transform.position = new Vector3(0, 0, 0);
+                // destination.transform.rotation = Quaternion.Euler(0, 0, 0);
+                // destination.transform.eulerAngles = new Vector3(0, 0, 0);
+                destination.transform.localPosition = new Vector3(0, 0, 0);
+                destination.transform.localRotation = Quaternion.Euler(0, 0, 0);
+                destination.transform.localEulerAngles = new Vector3(0, 0, 0);
+                destination.transform.localScale = new Vector3(1f, 1f, 1f);
+
+                // dMF.transform.position = new Vector3(0, 0, 0);
+                // dMF.transform.rotation = Quaternion.Euler(0, 0, 0);
+                // dMF.transform.eulerAngles = new Vector3(0, 0, 0);
+                dMF.transform.localPosition = new Vector3(0, 0, 0);
+                dMF.transform.localRotation = Quaternion.Euler(0, 0, 0);
+                dMF.transform.localEulerAngles = new Vector3(0, 0, 0);
+                dMF.transform.localScale = new Vector3(1, 1, 1);
+
+                // dMR.transform.position = new Vector3(0, 0, 0);
+                // dMR.transform.rotation = Quaternion.Euler(0, 0, 0);
+                // dMR.transform.eulerAngles = new Vector3(0, 0, 0);
+                dMR.transform.localPosition = new Vector3(0, 0, 0);
+                dMR.transform.localRotation = Quaternion.Euler(0, 0, 0);
+                dMR.transform.localEulerAngles = new Vector3(0, 0, 0);
+                dMR.transform.localScale = new Vector3(1, 1, 1);
+
+                MeshFilter sMF = (source.GetComponent<MeshFilter>() != null) ? source.GetComponent<MeshFilter>() : source.GetComponentInChildren<MeshFilter>();
+                if (sMF != null)
+                {
+                    Debug.Log("Copying MF->MF");
+                    dMF.mesh = sMF.mesh;
+                    dMF.sharedMesh = sMF.sharedMesh;
+                }
+
+                MeshRenderer sMR = (source.GetComponent<MeshRenderer>() != null) ? source.GetComponent<MeshRenderer>() : source.GetComponentInChildren<MeshRenderer>();
+                if (sMR != null)
+                {
+                    Debug.Log("Copying MR->MR");
+                    Shader shaderSave = dMR.material.shader;  // Shader must be maintained in order for the Stealth mode to work automatically
+                    dMR.sharedMaterials = sMR.sharedMaterials;
+                    dMR.material.shader = shaderSave;
+                }
+
+                SkinnedMeshRenderer sSMR = (source.GetComponent<SkinnedMeshRenderer>() != null) ? source.GetComponent<SkinnedMeshRenderer>() : source.GetComponentInChildren<SkinnedMeshRenderer>();
+                if (sSMR != null)
+                {
+                    Debug.Log("Copying SMR->MF/MR");
+                    dMF.sharedMesh = sSMR.sharedMesh;
+                    Shader shaderSave = dMR.material.shader; // Shader must be maintained in order for the Stealth mode to work automatically
+                    dMR.material = sSMR.material;
+                    dMR.material.shader = shaderSave;
+                }
+            }
+
+            public Renderer FindRenderer(AssetLoader asset)
+            {
+                Renderer renderer = null;
+                renderer = asset.GetComponent<MeshRenderer>();
+                if (renderer != null) { return renderer; }
+                renderer = asset.GetComponent<SkinnedMeshRenderer>();
+                if (renderer != null) { return renderer; }
+                renderer = asset.GetComponentInChildren<MeshRenderer>();
+                if (renderer != null) { return renderer; }
+                renderer = asset.GetComponentInChildren<SkinnedMeshRenderer>();
+                if (renderer != null) { return renderer; }
+                return null;
+            }
+
+            public Renderer FindRenderer(GameObject go)
+            {
+                Renderer renderer = null;
+                renderer = go.GetComponent<MeshRenderer>();
+                if (renderer != null) { return renderer; }
+                renderer = go.GetComponent<SkinnedMeshRenderer>();
+                if (renderer != null) { return renderer; }
+                renderer = go.GetComponentInChildren<MeshRenderer>();
+                if (renderer != null) { return renderer; }
+                renderer = go.GetComponentInChildren<SkinnedMeshRenderer>();
+                if (renderer != null) { return renderer; }
+                return null;
             }
 
             public enum LoadType
             {
                 mini = 1,
-                animatedMini = 2,
                 effect = 11
             }
         }

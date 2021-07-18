@@ -12,22 +12,14 @@ namespace LordAshes
         public static class StateDetection
         {
             // Initialization stage
-            private static int stageStart = -50;
-            private static int stage = stageStart;
+            public static int stageStart = -200;
+            public static int stage = (stageStart-10);
             private static int assetCount = 0;
 
             private static System.Guid[] subscriptionGuid = new System.Guid[] { System.Guid.Empty, System.Guid.Empty, System.Guid.Empty };
 
-            private static bool IsBoardLoaded = false;
-
             public static void Initiailze(System.Reflection.MemberInfo plugin)
             {
-                BoardSessionManager.OnStateChange += (s) =>
-                {
-                    Debug.Log("StateDetection: Board Changed To " + s.ToString());
-                    if (s.ToString().Contains("+Active")) { IsBoardLoaded = true; } else { IsBoardLoaded = false; }
-                };
-
                 SceneManager.sceneLoaded += (scene, mode) =>
                 {
                     try
@@ -63,7 +55,8 @@ namespace LordAshes
 
             public static bool Ready()
             {
-                if (IsBoardLoaded)
+                if (!BoardSessionManager.HasInstance) { return false; }
+                if (!BoardSessionManager.IsLoading)
                 {
                     if (stage >= 11)
                     {
@@ -74,11 +67,16 @@ namespace LordAshes
                     //
                     else if (stage == 10)
                     {
+                        Debug.Log("Resetting StatMessage Data...");
+                        StatMessaging.Reset(CustomMiniPlugin.Guid);
+                        StatMessaging.Reset(CustomMiniPlugin.Guid + ".effect");
+                        StatMessaging.Reset(CustomMiniPlugin.Guid + ".assetAnimation");
                         Debug.Log("Subscribing To '" + CustomMiniPlugin.Guid + "' Messages");
                         subscriptionGuid[0] = StatMessaging.Subscribe(CustomMiniPlugin.Guid, CustomMiniPlugin.requestHandler.Request);
+                        Debug.Log("Subscribing To '" + CustomMiniPlugin.Guid + ".effect' Messages");
                         subscriptionGuid[1] = StatMessaging.Subscribe(CustomMiniPlugin.Guid+".effect", CustomMiniPlugin.requestHandler.Request);
+                        Debug.Log("Subscribing To '" + CustomMiniPlugin.Guid + ".assetAnimation' Messages");
                         subscriptionGuid[2] = StatMessaging.Subscribe(CustomMiniPlugin.Guid+".assetAnimation", CustomMiniPlugin.requestHandler.Request);
-                        StatMessaging.Reset();
                         stage++;
                     }
                     //
@@ -97,38 +95,45 @@ namespace LordAshes
                         bool loaded = true;
                         foreach (CreatureBoardAsset asset in CreaturePresenter.AllCreatureAssets)
                         {
-                            if (asset.BaseLoader.LoadedAsset == null)
+                            // Debug.Log("Checking '" + asset.name + "'...");
+                            if (asset.CreatureLoaders[0].LoadedAsset == null)
                             {
-                                Debug.Log("Asset " + asset.name + " has a null BaseLoader");
+                                Debug.Log("Asset " + asset.name + " has a null CreatureLoader[0]");
                                 loaded = false; break;
                             }
                             else
                             {
-                                if (asset.BaseLoader.LoadedAsset.GetComponent<MeshFilter>() == null)
+                                // Debug.Log("Asset " + asset.name + " has a CreatureLoader[0]");
+                                if (asset.CreatureLoaders[0].LoadedAsset.GetComponent<MeshFilter>() == null)
                                 {
-                                    Debug.Log("Asset " + asset.name + " has a null BaseLoader MeshFilter");
+                                    Debug.Log("Asset " + asset.name + " has a null CreatureLoaders[0] MeshFilter");
                                     loaded = false; break;
                                 }
                                 else
                                 {
-                                    if (asset.BaseLoader.LoadedAsset.GetComponent<MeshFilter>().mesh == null)
+                                    // Debug.Log("Asset " + asset.name + " has a MeshFilter");
+                                    if (asset.CreatureLoaders[0].LoadedAsset.GetComponent<MeshFilter>().mesh == null)
                                     {
-                                        Debug.Log("Asset " + asset.name + " has a null BaseLoader MeshFilter mesh");
+                                        Debug.Log("Asset " + asset.name + " has a null CreatureLoaders[0] MeshFilter mesh");
                                         loaded = false; break;
                                     }
                                     else
                                     {
-                                        Debug.Log("Asset " + asset.name + " is ready");
+                                        // Debug.Log("Asset " + asset.name + " is ready");
                                     }
                                 }
                             }
+                            if (!loaded) { break; }
                         }
                         if (loaded)
                         {
                             Debug.Log("Minis mesh test passed. Processing transformations...");
-                            StatMessaging.Reset();
                             SystemMessage.DisplayInfoText("Please Be Patient...\r\nLoading Mini Transformations");
                             stage = 2;
+                        }
+                        else
+                        {
+                            Debug.Log("Minis mesh test failed...");
                         }
                     }
                     //
@@ -136,6 +141,7 @@ namespace LordAshes
                     //
                     else if (stage <= 0)
                     {
+                        if (stage == stageStart) { SystemMessage.DisplayInfoText("Waiting For Minis To Complete Loading..."); }
                         if (CreaturePresenter.AllCreatureAssets.Count == assetCount)
                         {
                             // Debug.Log("Creature Count No Change (" + assetCount + "): " + stage); 
@@ -144,24 +150,23 @@ namespace LordAshes
                         else
                         {
                             assetCount = CreaturePresenter.AllCreatureAssets.Count;
-                            Debug.Log("Creature Count Change (" + assetCount + ") @ Stage " + stage);
-                            stage = stageStart;
+                            // Debug.Log("Creature Count Change (" + assetCount + ") @ Stage " + stage);
+                            stage = (stage<(stageStart + 1)) ? stage : (stageStart+1);
                         }
                     }
+                    // Debug.Log(stage + " of " + stageStart);
                 }
                 //
                 // Board is re-loading, request startup seqeunce
                 //
-                else if (stage >= 0)
+                else
                 {
-                    Debug.Log("Board Is Re-loading...");
-                    for(int g=0; g<subscriptionGuid.Length; g++)
+                    for (int g=0; g<subscriptionGuid.Length; g++)
                     {
                         StatMessaging.Unsubscribe(subscriptionGuid[g]);
                         subscriptionGuid[g] = System.Guid.Empty;
                     }
-                    StatMessaging.Reset();
-                    stage = stageStart;
+                    stage = (stageStart-10);
                 }
                 return false;
             }

@@ -5,7 +5,6 @@ using BepInEx;
 using BepInEx.Configuration;
 using UnityEngine;
 using System;
-using DataModel;
 
 namespace LordAshes
 {
@@ -18,7 +17,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "4.9.1.0";
+        public const string Version = "5.0.0.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
@@ -34,7 +33,7 @@ namespace LordAshes
         private CreatureGuid showEffectDialog = CreatureGuid.Empty;
 
         // Dialog Open
-        private bool showContentAssit = false;
+        private bool showContentAssist = false;
 
         /// <summary>
         /// Function for initializing plugin
@@ -64,6 +63,10 @@ namespace LordAshes
             animTriggers[2] = Config.Bind("Hotkeys", "Animation 3", new KeyboardShortcut(KeyCode.Alpha6, KeyCode.LeftControl));
             animTriggers[3] = Config.Bind("Hotkeys", "Animation 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.LeftControl));
             animTriggers[4] = Config.Bind("Hotkeys", "Animation 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.LeftControl));
+
+            // Update creature detection system for number of cycles during which creatures are allowed to load
+            StateDetection.stageStart = Config.Bind("Settings", "Creature Load Cycles", -200).Value;
+            StateDetection.stage = (StateDetection.stageStart-10);
 
             // Add transformation main menu
             RadialUI.RadialSubmenu.EnsureMainMenuItem(  RadialUI.RadialUIPlugin.Guid + ".Transformation",
@@ -100,16 +103,16 @@ namespace LordAshes
                 // Check for Transformation 
                 if (StrictKeyCheck(actionTriggers[0].Value))
                 {
-                    showContentAssit = true;
+                    showContentAssist = true;
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Make me a: ", "OK",
                                                     (s) => 
                                                     { 
-                                                        showContentAssit = false; 
+                                                        showContentAssist = false; 
                                                         StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, s);
                                                     }, null,
                                                     "Remove", () => 
                                                     { 
-                                                        showContentAssit = false; 
+                                                        showContentAssist = false; 
                                                         StatMessaging.ClearInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid); 
                                                     },
                                                     "");
@@ -118,18 +121,18 @@ namespace LordAshes
                 // Check for Effects
                 if (StrictKeyCheck(actionTriggers[1].Value) || showEffectDialog!=CreatureGuid.Empty)
                 {
-                    showContentAssit = true;
+                    showContentAssist = true;
                     CreatureGuid active = (showEffectDialog != CreatureGuid.Empty) ? showEffectDialog : LocalClient.SelectedCreatureId;
                     showEffectDialog = CreatureGuid.Empty;
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Add effect: ", "OK",
                                                     (s) => 
                                                     {
-                                                        showContentAssit = false;
+                                                        showContentAssist = false;
                                                         StatMessaging.SetInfo(active, CustomMiniPlugin.Guid+".effect", s); 
                                                     }, null,
                                                     "Remove", () =>
                                                     {
-                                                        showContentAssit = false;
+                                                        showContentAssist = false;
                                                         StatMessaging.SetInfo(active, CustomMiniPlugin.Guid+".effect", "");
                                                     },
                                                     "");
@@ -154,55 +157,19 @@ namespace LordAshes
                     }
                 }
 
-                // Flying & Stealth
-                List<CreatureGuid> removeList = new List<CreatureGuid>();
-                foreach(KeyValuePair<CreatureGuid,Transformation> mini in requestHandler.transformedAssets)
+                // Check for ended animations
+                for(int c=0; c<requestHandler.playingAnimation.Count; c++)
                 {
-                    CreatureBoardAsset asset;
-                    CreaturePresenter.TryGetAsset(mini.Key, out asset);
-                    if (asset==null)
+                    GameObject go = GameObject.Find("CustomContent:" + requestHandler.playingAnimation.ElementAt(c).Creature.CreatureId);
+
+                    if (go.GetComponent<Animation>().isPlaying==false)
                     {
-                        Debug.Log("Queuing '" + removeList.ElementAt(0) + "' For Removal From The Transfromation List");
-                        removeList.Add(mini.Key);
+                        Debug.Log("Switching " + StatMessaging.GetCreatureName(requestHandler.playingAnimation.ElementAt(c)) + " (" + requestHandler.playingAnimation.ElementAt(c).Creature.CreatureId + ") to mini mesh renderer");
+                        requestHandler.FindRenderer(requestHandler.playingAnimation.ElementAt(c).CreatureLoaders[0]).enabled = true;
+                        requestHandler.FindRenderer(go).enabled = false;
+                        requestHandler.playingAnimation.RemoveAt(c);
+                        c = c - 1;
                     }
-                    else
-                    {
-                        try
-                        {
-                            mini.Value.go.GetComponentInChildren<MeshRenderer>().enabled = !asset.Creature.IsExplicitlyHidden & (asset.transform.position.y < CameraController.HidePlaneHeight);
-                        }
-                        catch(Exception)
-                        {
-                            mini.Value.go.GetComponentInChildren<SkinnedMeshRenderer>().enabled = !asset.Creature.IsExplicitlyHidden & (asset.transform.position.y < CameraController.HidePlaneHeight);
-                        }
-                        try
-                        {
-                            if (asset.IsFlying && mini.Value.parent != 1)
-                            {
-                                Debug.Log("Creature " + StatMessaging.GetCreatureName(asset.Creature) + " started flying...");
-                                mini.Value.parent = 1;
-                                mini.Value.go.transform.SetParent(mini.Value.parents[mini.Value.parent]);
-                            }
-                            else if (!asset.IsFlying && mini.Value.parent != 0)
-                            {
-                                Debug.Log("Creature " + StatMessaging.GetCreatureName(asset.Creature) + " stopped flying...");
-                                mini.Value.parent = 0;
-                                mini.Value.go.transform.SetParent(mini.Value.parents[mini.Value.parent]);
-                                mini.Value.go.transform.localPosition = Vector3.zero;
-                            }
-                        }
-                        catch (Exception x)
-                        {
-                            Debug.Log(x);
-                        }
-                    }
-                }
-                while (true)
-                {
-                    if (removeList.Count <= 0) { break; }
-                    Debug.Log("Removing '" + removeList.ElementAt(0) + "' From The Transfromation List");
-                    requestHandler.transformedAssets.Remove(removeList.ElementAt(0));
-                    removeList.RemoveAt(0);
                 }
             }
         }
@@ -212,7 +179,7 @@ namespace LordAshes
         /// </summary>
         public void OnGUI()
         {
-            if (showContentAssit)
+            if (showContentAssist)
             {
                 GUIStyle gs = new GUIStyle() { wordWrap = true };
                 gs.normal.textColor = UnityEngine.Color.yellow;
@@ -224,21 +191,6 @@ namespace LordAshes
         public static RequestHandler GetRequestHander()
         {
             return requestHandler;
-        }
-
-        /// <summary>
-        /// Methiod for extracting the creature name when using Stat Maessaging
-        /// </summary>
-        /// <param name="creature"></param>
-        /// <returns></returns>
-        public static string GetCreatureName(Creature creature)
-        {
-            string result = creature.Name;
-            if(result.IndexOf("<size=0>")>=0)
-            {
-                result = result.Substring(0, result.IndexOf("<size=0>"));
-            }
-            return result;
         }
 
         /// <summary>

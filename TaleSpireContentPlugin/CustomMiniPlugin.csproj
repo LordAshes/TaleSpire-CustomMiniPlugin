@@ -71,8 +71,9 @@
     <Reference Include="RadialUI">
       <HintPath>..\..\..\..\AppData\Roaming\r2modmanPlus-local\TaleSpire\profiles\Plugins\BepInEx\plugins\HolloFox_TS-RadialUIPlugin\RadialUI.dll</HintPath>
     </Reference>
-    <Reference Include="StatMessaging">
-      <HintPath>..\..\TaleSpireStatMessaging\TaleSpireStatMessaging\bin\Debug\StatMessaging.dll</HintPath>
+    <Reference Include="StatMessaging, Version=1.4.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\TaleSpireStatMessaging - 1.6.0\TaleSpireStatMessaging\bin\Debug\StatMessaging.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
