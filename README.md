@@ -16,6 +16,12 @@ Distributing CMP Content: https://youtu.be/wckyKTD7nPw
 
 ## Change Log
 
+5.0.0: Switched to using mesh transfer for normal and fly mode with added GO being used only for effects and animation.
+
+5.0.0: Fixes Line of Sight Visility.
+
+5.0.0: Fixes ability to select mini by any part of the mini (not just the base).
+
 4.9.1: Bug fix to support both MeshRenderer and SkinnedMeshRenderer assets.
 
 4.9.0: Flying mode is now done the same way as regular mode. This means consistent texture (with transparency) and stealth in both modes.
