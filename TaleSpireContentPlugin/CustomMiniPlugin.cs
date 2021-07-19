@@ -17,13 +17,13 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "5.0.0.0";
+        public const string Version = "5.1.0.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
 
         // Triggers
-        private ConfigEntry<KeyboardShortcut>[] actionTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[3];
+        private ConfigEntry<KeyboardShortcut>[] actionTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[4];
         private ConfigEntry<KeyboardShortcut>[] animTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[5];
 
         // Request handelr
@@ -34,6 +34,9 @@ namespace LordAshes
 
         // Dialog Open
         private bool showContentAssist = false;
+
+        // Diagnostic Mode
+        public static bool diagnosticMode = false;
 
         /// <summary>
         /// Function for initializing plugin
@@ -57,6 +60,7 @@ namespace LordAshes
             actionTriggers[0] = Config.Bind("Hotkeys", "Transform Mini", new KeyboardShortcut(KeyCode.M, KeyCode.LeftControl));
             actionTriggers[1] = Config.Bind("Hotkeys", "Add Effect", new KeyboardShortcut(KeyCode.E, KeyCode.LeftControl));
             actionTriggers[2] = Config.Bind("Hotkeys", "Play Animation", new KeyboardShortcut(KeyCode.P, KeyCode.LeftControl));
+            actionTriggers[3] = Config.Bind("Hotkeys", "Load Transformations", new KeyboardShortcut(KeyCode.T, KeyCode.LeftControl));
 
             animTriggers[0] = Config.Bind("Hotkeys", "Animation 1", new KeyboardShortcut(KeyCode.Alpha4, KeyCode.LeftControl));
             animTriggers[1] = Config.Bind("Hotkeys", "Animation 2", new KeyboardShortcut(KeyCode.Alpha5, KeyCode.LeftControl));
@@ -67,6 +71,9 @@ namespace LordAshes
             // Update creature detection system for number of cycles during which creatures are allowed to load
             StateDetection.stageStart = Config.Bind("Settings", "Creature Load Cycles", -200).Value;
             StateDetection.stage = (StateDetection.stageStart-10);
+
+            // Update diagnostic mode from configuration
+            diagnosticMode = Config.Bind("Settings", "Diagnostic Mode", false).Value;
 
             // Add transformation main menu
             RadialUI.RadialSubmenu.EnsureMainMenuItem(  RadialUI.RadialUIPlugin.Guid + ".Transformation",
@@ -145,6 +152,12 @@ namespace LordAshes
                                                     (s) => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid+".assetAnimation", s); }, null,
                                                     "Remove", () => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid+".animation", ""); },
                                                     "");
+                }
+
+                // Manual Load Transformations
+                if (StrictKeyCheck(actionTriggers[3].Value))
+                {
+                    StateDetection.stage = 1;
                 }
 
                 // Check for Quick Animations

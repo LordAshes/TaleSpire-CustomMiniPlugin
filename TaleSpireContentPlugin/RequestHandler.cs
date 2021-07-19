@@ -262,7 +262,7 @@ namespace LordAshes
                 // destination.transform.eulerAngles = new Vector3(0, 0, 0);
                 destination.transform.localPosition = new Vector3(0, 0, 0);
                 destination.transform.localRotation = Quaternion.Euler(0, 0, 0);
-                destination.transform.localEulerAngles = new Vector3(0, 0, 0);
+                destination.transform.localEulerAngles = new Vector3(0, 180, 0);
                 destination.transform.localScale = new Vector3(1f, 1f, 1f);
 
                 // dMF.transform.position = new Vector3(0, 0, 0);

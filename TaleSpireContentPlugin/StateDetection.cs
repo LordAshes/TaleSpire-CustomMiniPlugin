@@ -95,7 +95,7 @@ namespace LordAshes
                         bool loaded = true;
                         foreach (CreatureBoardAsset asset in CreaturePresenter.AllCreatureAssets)
                         {
-                            // Debug.Log("Checking '" + asset.name + "'...");
+                            if (CustomMiniPlugin.diagnosticMode){ Debug.Log("Checking '" + asset.name + "'..."); }
                             if (asset.CreatureLoaders[0].LoadedAsset == null)
                             {
                                 Debug.Log("Asset " + asset.name + " has a null CreatureLoader[0]");
@@ -103,7 +103,7 @@ namespace LordAshes
                             }
                             else
                             {
-                                // Debug.Log("Asset " + asset.name + " has a CreatureLoader[0]");
+                                if (CustomMiniPlugin.diagnosticMode){ Debug.Log("Asset " + asset.name + " has a CreatureLoader[0]"); }
                                 if (asset.CreatureLoaders[0].LoadedAsset.GetComponent<MeshFilter>() == null)
                                 {
                                     Debug.Log("Asset " + asset.name + " has a null CreatureLoaders[0] MeshFilter");
@@ -111,7 +111,7 @@ namespace LordAshes
                                 }
                                 else
                                 {
-                                    // Debug.Log("Asset " + asset.name + " has a MeshFilter");
+                                    if (CustomMiniPlugin.diagnosticMode){ Debug.Log("Asset " + asset.name + " has a MeshFilter"); }
                                     if (asset.CreatureLoaders[0].LoadedAsset.GetComponent<MeshFilter>().mesh == null)
                                     {
                                         Debug.Log("Asset " + asset.name + " has a null CreatureLoaders[0] MeshFilter mesh");
@@ -119,7 +119,7 @@ namespace LordAshes
                                     }
                                     else
                                     {
-                                        // Debug.Log("Asset " + asset.name + " is ready");
+                                        if (CustomMiniPlugin.diagnosticMode){ Debug.Log("Asset " + asset.name + " is ready"); }
                                     }
                                 }
                             }
@@ -141,16 +141,20 @@ namespace LordAshes
                     //
                     else if (stage <= 0)
                     {
-                        if (stage == stageStart) { SystemMessage.DisplayInfoText("Waiting For Minis To Complete Loading..."); }
+                        if (stage == stageStart)
+                        { 
+                            if(CustomMiniPlugin.diagnosticMode){ Debug.Log("Starting Mini Detection System..."); }
+                            SystemMessage.DisplayInfoText("Waiting For Minis To Complete Loading..."); 
+                        }
                         if (CreaturePresenter.AllCreatureAssets.Count == assetCount)
                         {
-                            // Debug.Log("Creature Count No Change (" + assetCount + "): " + stage); 
+                            if (CustomMiniPlugin.diagnosticMode){ Debug.Log("I still see " + assetCount + " minis (" + stage + " of " + stageStart + ")"); }
                             stage++;
                         }
                         else
                         {
                             assetCount = CreaturePresenter.AllCreatureAssets.Count;
-                            // Debug.Log("Creature Count Change (" + assetCount + ") @ Stage " + stage);
+                            if (CustomMiniPlugin.diagnosticMode){ Debug.Log("No! Now I see " + assetCount + " minis (" + stage + " of " + stageStart + ")"); }
                             stage = (stage<(stageStart + 1)) ? stage : (stageStart+1);
                         }
                     }
