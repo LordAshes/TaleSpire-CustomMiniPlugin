@@ -17,7 +17,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "5.1.0.0";
+        public const string Version = "5.2.0.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
@@ -31,6 +31,10 @@ namespace LordAshes
 
         // Show Effect Dialog
         private CreatureGuid showEffectDialog = CreatureGuid.Empty;
+        private CreatureGuid showMiniDialog = CreatureGuid.Empty;
+
+        // Use mini transformation icon
+        private bool useMiniTransformationMenuItem = true;
 
         // Dialog Open
         private bool showContentAssist = false;
@@ -68,6 +72,9 @@ namespace LordAshes
             animTriggers[3] = Config.Bind("Hotkeys", "Animation 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.LeftControl));
             animTriggers[4] = Config.Bind("Hotkeys", "Animation 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.LeftControl));
 
+            // Update use of mini transformation radial menu item
+            useMiniTransformationMenuItem = Config.Bind("Settings", "Use mini transformation radial menu item", true).Value;
+
             // Update creature detection system for number of cycles during which creatures are allowed to load
             StateDetection.stageStart = Config.Bind("Settings", "Creature Load Cycles", -200).Value;
             StateDetection.stage = (StateDetection.stageStart-10);
@@ -90,6 +97,18 @@ namespace LordAshes
                                                         null
                                                     );
 
+            // Add mini sub-menu
+            if (useMiniTransformationMenuItem)
+            {
+                RadialUI.RadialSubmenu.CreateSubMenuItem(RadialUI.RadialUIPlugin.Guid + ".Transformation",
+                                                            "Mini",
+                                                            FileAccessPlugin.Image.LoadSprite("Images/Icons/Mini.png"),
+                                                            ActivateMini,
+                                                            true,
+                                                            null
+                                                        );
+            };
+
             // Activate State Detection Board Subscription 
             StateDetection.Initiailze(this.GetType());
         }
@@ -97,6 +116,11 @@ namespace LordAshes
         private void ActivateEffect(CreatureGuid cid, string menu, MapMenuItem mmi)
         {
             showEffectDialog = cid;
+        }
+
+        private void ActivateMini(CreatureGuid cid, string menu, MapMenuItem mmi)
+        {
+            showMiniDialog = cid;
         }
 
         /// <summary>
@@ -108,19 +132,21 @@ namespace LordAshes
             if (StateDetection.Ready())
             {
                 // Check for Transformation 
-                if (StrictKeyCheck(actionTriggers[0].Value))
+                if (StrictKeyCheck(actionTriggers[0].Value) || showMiniDialog!=CreatureGuid.Empty)
                 {
                     showContentAssist = true;
+                    CreatureGuid active = (showMiniDialog != CreatureGuid.Empty) ? showMiniDialog : LocalClient.SelectedCreatureId;
+                    showMiniDialog = CreatureGuid.Empty;
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Make me a: ", "OK",
                                                     (s) => 
                                                     { 
                                                         showContentAssist = false; 
-                                                        StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, s);
+                                                        StatMessaging.SetInfo(active, CustomMiniPlugin.Guid, s);
                                                     }, null,
                                                     "Remove", () => 
                                                     { 
                                                         showContentAssist = false; 
-                                                        StatMessaging.ClearInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid); 
+                                                        StatMessaging.ClearInfo(active, CustomMiniPlugin.Guid); 
                                                     },
                                                     "");
                 }
