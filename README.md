@@ -16,6 +16,16 @@ Distributing CMP Content: https://youtu.be/wckyKTD7nPw
 
 ## Change Log
 
+5.2.0: Mini Transformation added to radial menu under the Transfromation selection. Can be turned of in settings.
+
+5.2.0: Added sample sphere effect content demonstrating transparency. Use "sphere" to apply.
+
+5.1.0: Added manual "load" transformations mode (default LCTRL+T)
+
+5.0.1: Corrected orientation of the transformed mini (so that it matche the mouse facing direction)
+
+5.0.1: Added optional diagnostic mode (off by default) to provide more console logs regarding startup and board reload
+
 5.0.0: Switched to using mesh transfer for normal and fly mode with added GO being used only for effects and animation.
 
 5.0.0: Fixes Line of Sight Visility.
