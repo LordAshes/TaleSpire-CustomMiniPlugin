@@ -16,6 +16,20 @@ Distributing CMP Content: https://youtu.be/wckyKTD7nPw
 
 ## Change Log
 
+5.3.2: AssetBundles are now always unload after prefab is made to free up memory and prevent issues with reusing an assetBundle
+
+5.3.1: Bug fix to prevent non-compatible minis from locking up CMP
+
+5.3.1: Add Radial options for Effect Scaled and Effect Temporary
+
+5.3.0: Comes with a sample "BloodPool" asset intended for Temporary Effect use
+
+5.3.0: Added Temporary Effect (LCTRL+W) which disappears after a fixed time intermal (to be configurable in the future)
+
+5.3.0: Added Scaled Effect Transform (scales to Mini size when added unlike regular Effect which is always medium size to start)
+
+5.3.0: When transfromations are removed the key is removed from Stat Messaging
+
 5.2.0: Mini Transformation added to radial menu under the Transfromation selection. Can be turned of in settings.
 
 5.2.0: Added sample sphere effect content demonstrating transparency. Use "sphere" to apply.
