@@ -17,21 +17,20 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "5.2.0.0";
+        public const string Version = "5.3.2.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
 
         // Triggers
-        private ConfigEntry<KeyboardShortcut>[] actionTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[4];
+        private ConfigEntry<KeyboardShortcut>[] actionTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[6];
         private ConfigEntry<KeyboardShortcut>[] animTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[5];
 
         // Request handelr
         private static RequestHandler requestHandler = new RequestHandler();
 
         // Show Effect Dialog
-        private CreatureGuid showEffectDialog = CreatureGuid.Empty;
-        private CreatureGuid showMiniDialog = CreatureGuid.Empty;
+        private Tuple<CreatureGuid,int> showDialog = new Tuple<CreatureGuid,int>(CreatureGuid.Empty,-1);
 
         // Use mini transformation icon
         private bool useMiniTransformationMenuItem = true;
@@ -49,7 +48,7 @@ namespace LordAshes
         void Awake()
         {
             // Setup cache settings
-            if(Config.Bind("Settings", "Use Cache For First List", true).Value)
+            if(Config.Bind("Settings", "Use Cache For File List", true).Value)
             {
                 UnityEngine.Debug.Log("Custom Mini Plugin Active. Using Cached Asset List. New Assets Cannot Be Added At Runtime.");
                 FileAccessPlugin.File.SetCacheType(FileAccessPlugin.CacheType.CacheCustomData);
@@ -63,8 +62,10 @@ namespace LordAshes
             // Setup default trigger
             actionTriggers[0] = Config.Bind("Hotkeys", "Transform Mini", new KeyboardShortcut(KeyCode.M, KeyCode.LeftControl));
             actionTriggers[1] = Config.Bind("Hotkeys", "Add Effect", new KeyboardShortcut(KeyCode.E, KeyCode.LeftControl));
-            actionTriggers[2] = Config.Bind("Hotkeys", "Play Animation", new KeyboardShortcut(KeyCode.P, KeyCode.LeftControl));
-            actionTriggers[3] = Config.Bind("Hotkeys", "Load Transformations", new KeyboardShortcut(KeyCode.T, KeyCode.LeftControl));
+            actionTriggers[2] = Config.Bind("Hotkeys", "Add Scaled Effect", new KeyboardShortcut(KeyCode.S, KeyCode.LeftControl));
+            actionTriggers[3] = Config.Bind("Hotkeys", "Add Temporary Scaled Effect", new KeyboardShortcut(KeyCode.W, KeyCode.LeftControl));
+            actionTriggers[4] = Config.Bind("Hotkeys", "Play Animation", new KeyboardShortcut(KeyCode.P, KeyCode.LeftControl));
+            actionTriggers[5] = Config.Bind("Hotkeys", "Load Transformations", new KeyboardShortcut(KeyCode.T, KeyCode.LeftControl));
 
             animTriggers[0] = Config.Bind("Hotkeys", "Animation 1", new KeyboardShortcut(KeyCode.Alpha4, KeyCode.LeftControl));
             animTriggers[1] = Config.Bind("Hotkeys", "Animation 2", new KeyboardShortcut(KeyCode.Alpha5, KeyCode.LeftControl));
@@ -88,11 +89,27 @@ namespace LordAshes
                                                         "Transformation",
                                                         FileAccessPlugin.Image.LoadSprite("Images/Icons/Transformation.png")
                                                       );
-            // Add effect sub-menu
+            // Add effect sub-menus
             RadialUI.RadialSubmenu.CreateSubMenuItem(RadialUI.RadialUIPlugin.Guid + ".Transformation",
                                                         "Effect",
                                                         FileAccessPlugin.Image.LoadSprite("Images/Icons/Effect.png"),
                                                         ActivateEffect,
+                                                        true,
+                                                        null
+                                                    );
+
+            RadialUI.RadialSubmenu.CreateSubMenuItem(RadialUI.RadialUIPlugin.Guid + ".Transformation",
+                                                        "Scaled Effect",
+                                                        FileAccessPlugin.Image.LoadSprite("Images/Icons/EffectScaled.png"),
+                                                        ActivateEffectScaled,
+                                                        true,
+                                                        null
+                                                    );
+
+            RadialUI.RadialSubmenu.CreateSubMenuItem(RadialUI.RadialUIPlugin.Guid + ".Transformation",
+                                                        "Temporary Effect",
+                                                        FileAccessPlugin.Image.LoadSprite("Images/Icons/EffectTemporary.png"),
+                                                        ActivateEffectTemporary,
                                                         true,
                                                         null
                                                     );
@@ -115,12 +132,22 @@ namespace LordAshes
 
         private void ActivateEffect(CreatureGuid cid, string menu, MapMenuItem mmi)
         {
-            showEffectDialog = cid;
+            showDialog = new Tuple<CreatureGuid,int>(cid, 1);
+        }
+
+        private void ActivateEffectScaled(CreatureGuid cid, string menu, MapMenuItem mmi)
+        {
+            showDialog = new Tuple<CreatureGuid, int>(cid, 2);
+        }
+
+        private void ActivateEffectTemporary(CreatureGuid cid, string menu, MapMenuItem mmi)
+        {
+            showDialog = new Tuple<CreatureGuid, int>(cid, 3);
         }
 
         private void ActivateMini(CreatureGuid cid, string menu, MapMenuItem mmi)
         {
-            showMiniDialog = cid;
+            showDialog = new Tuple<CreatureGuid, int>(cid, 0);
         }
 
         /// <summary>
@@ -132,11 +159,11 @@ namespace LordAshes
             if (StateDetection.Ready())
             {
                 // Check for Transformation 
-                if (StrictKeyCheck(actionTriggers[0].Value) || showMiniDialog!=CreatureGuid.Empty)
+                if (StrictKeyCheck(actionTriggers[0].Value) || showDialog.Item2==0)
                 {
                     showContentAssist = true;
-                    CreatureGuid active = (showMiniDialog != CreatureGuid.Empty) ? showMiniDialog : LocalClient.SelectedCreatureId;
-                    showMiniDialog = CreatureGuid.Empty;
+                    CreatureGuid active = (showDialog.Item1 != CreatureGuid.Empty) ? showDialog.Item1 : LocalClient.SelectedCreatureId;
+                    showDialog = new Tuple<CreatureGuid, int>(CreatureGuid.Empty, -1);
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Make me a: ", "OK",
                                                     (s) => 
                                                     { 
@@ -152,11 +179,11 @@ namespace LordAshes
                 }
 
                 // Check for Effects
-                if (StrictKeyCheck(actionTriggers[1].Value) || showEffectDialog!=CreatureGuid.Empty)
+                if (StrictKeyCheck(actionTriggers[1].Value) || showDialog.Item2==1)
                 {
                     showContentAssist = true;
-                    CreatureGuid active = (showEffectDialog != CreatureGuid.Empty) ? showEffectDialog : LocalClient.SelectedCreatureId;
-                    showEffectDialog = CreatureGuid.Empty;
+                    CreatureGuid active = (showDialog.Item1 != CreatureGuid.Empty) ? showDialog.Item1 : LocalClient.SelectedCreatureId;
+                    showDialog = new Tuple<CreatureGuid, int>(CreatureGuid.Empty, -1);
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Add effect: ", "OK",
                                                     (s) => 
                                                     {
@@ -171,8 +198,48 @@ namespace LordAshes
                                                     "");
                 }
 
+                // Check for Effects Scaled
+                if (StrictKeyCheck(actionTriggers[2].Value) || showDialog.Item2 == 2)
+                {
+                    showContentAssist = true;
+                    CreatureGuid active = (showDialog.Item1 != CreatureGuid.Empty) ? showDialog.Item1 : LocalClient.SelectedCreatureId;
+                    showDialog = new Tuple<CreatureGuid, int>(CreatureGuid.Empty, -1);
+                    SystemMessage.AskForTextInput("Custom Mini Plugin", "Add effect: ", "OK",
+                                                    (s) =>
+                                                    {
+                                                        showContentAssist = false;
+                                                        StatMessaging.SetInfo(active, CustomMiniPlugin.Guid + ".effectScaled", s);
+                                                    }, null,
+                                                    "Remove", () =>
+                                                    {
+                                                        showContentAssist = false;
+                                                        StatMessaging.SetInfo(active, CustomMiniPlugin.Guid + ".effectScaled", "");
+                                                    },
+                                                    "");
+                }
+
+                // Check for Effects Temporary
+                if (StrictKeyCheck(actionTriggers[3].Value) || showDialog.Item2 == 3)
+                {
+                    showContentAssist = true;
+                    CreatureGuid active = (showDialog.Item1 != CreatureGuid.Empty) ? showDialog.Item1 : LocalClient.SelectedCreatureId;
+                    showDialog = new Tuple<CreatureGuid, int>(CreatureGuid.Empty, -1);
+                    SystemMessage.AskForTextInput("Custom Mini Plugin", "Add effect: ", "OK",
+                                                    (s) =>
+                                                    {
+                                                        showContentAssist = false;
+                                                        StatMessaging.SetInfo(active, CustomMiniPlugin.Guid + ".effectTemporary", s);
+                                                    }, null,
+                                                    "Remove", () =>
+                                                    {
+                                                        showContentAssist = false;
+                                                        StatMessaging.SetInfo(active, CustomMiniPlugin.Guid + ".effectTemporary", "");
+                                                    },
+                                                    "");
+                }
+
                 // Check for Animations
-                if (StrictKeyCheck(actionTriggers[2].Value))
+                if (StrictKeyCheck(actionTriggers[4].Value))
                 {
                     SystemMessage.AskForTextInput("Custom Mini Plugin", "Play animation: ", "OK",
                                                     (s) => { StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid+".assetAnimation", s); }, null,
@@ -181,7 +248,7 @@ namespace LordAshes
                 }
 
                 // Manual Load Transformations
-                if (StrictKeyCheck(actionTriggers[3].Value))
+                if (StrictKeyCheck(actionTriggers[5].Value))
                 {
                     StateDetection.stage = 1;
                 }
@@ -210,6 +277,9 @@ namespace LordAshes
                         c = c - 1;
                     }
                 }
+
+                // Handle duration effects
+                requestHandler.Update();
             }
         }
 

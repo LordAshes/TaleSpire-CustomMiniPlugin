@@ -16,7 +16,7 @@ namespace LordAshes
             public static int stage = (stageStart-10);
             private static int assetCount = 0;
 
-            private static System.Guid[] subscriptionGuid = new System.Guid[] { System.Guid.Empty, System.Guid.Empty, System.Guid.Empty };
+            private static System.Guid[] subscriptionGuid = new System.Guid[] { System.Guid.Empty, System.Guid.Empty, System.Guid.Empty, System.Guid.Empty, System.Guid.Empty };
 
             public static void Initiailze(System.Reflection.MemberInfo plugin)
             {
@@ -70,13 +70,19 @@ namespace LordAshes
                         Debug.Log("Resetting StatMessage Data...");
                         StatMessaging.Reset(CustomMiniPlugin.Guid);
                         StatMessaging.Reset(CustomMiniPlugin.Guid + ".effect");
+                        StatMessaging.Reset(CustomMiniPlugin.Guid + ".effectScaled");
+                        StatMessaging.Reset(CustomMiniPlugin.Guid + ".effectTemporary");
                         StatMessaging.Reset(CustomMiniPlugin.Guid + ".assetAnimation");
                         Debug.Log("Subscribing To '" + CustomMiniPlugin.Guid + "' Messages");
                         subscriptionGuid[0] = StatMessaging.Subscribe(CustomMiniPlugin.Guid, CustomMiniPlugin.requestHandler.Request);
                         Debug.Log("Subscribing To '" + CustomMiniPlugin.Guid + ".effect' Messages");
                         subscriptionGuid[1] = StatMessaging.Subscribe(CustomMiniPlugin.Guid+".effect", CustomMiniPlugin.requestHandler.Request);
+                        Debug.Log("Subscribing To '" + CustomMiniPlugin.Guid + ".effectScaled' Messages");
+                        subscriptionGuid[2] = StatMessaging.Subscribe(CustomMiniPlugin.Guid + ".effectScaled", CustomMiniPlugin.requestHandler.Request);
+                        Debug.Log("Subscribing To '" + CustomMiniPlugin.Guid + ".effectTemporary' Messages");
+                        subscriptionGuid[3] = StatMessaging.Subscribe(CustomMiniPlugin.Guid + ".effectTemporary", CustomMiniPlugin.requestHandler.Request);
                         Debug.Log("Subscribing To '" + CustomMiniPlugin.Guid + ".assetAnimation' Messages");
-                        subscriptionGuid[2] = StatMessaging.Subscribe(CustomMiniPlugin.Guid+".assetAnimation", CustomMiniPlugin.requestHandler.Request);
+                        subscriptionGuid[4] = StatMessaging.Subscribe(CustomMiniPlugin.Guid+".assetAnimation", CustomMiniPlugin.requestHandler.Request);
                         stage++;
                     }
                     //
@@ -96,25 +102,25 @@ namespace LordAshes
                         foreach (CreatureBoardAsset asset in CreaturePresenter.AllCreatureAssets)
                         {
                             if (CustomMiniPlugin.diagnosticMode){ Debug.Log("Checking '" + asset.name + "'..."); }
-                            if (asset.CreatureLoaders[0].LoadedAsset == null)
+                            if (asset.BaseLoader.LoadedAsset == null)
                             {
-                                Debug.Log("Asset " + asset.name + " has a null CreatureLoader[0]");
+                                Debug.Log("Asset " + asset.name + " has a null BaseLoader");
                                 loaded = false; break;
                             }
                             else
                             {
                                 if (CustomMiniPlugin.diagnosticMode){ Debug.Log("Asset " + asset.name + " has a CreatureLoader[0]"); }
-                                if (asset.CreatureLoaders[0].LoadedAsset.GetComponent<MeshFilter>() == null)
+                                if (asset.BaseLoader.LoadedAsset.GetComponent<MeshFilter>() == null)
                                 {
-                                    Debug.Log("Asset " + asset.name + " has a null CreatureLoaders[0] MeshFilter");
+                                    Debug.Log("Asset " + asset.name + " has a null BaseLoader MeshFilter");
                                     loaded = false; break;
                                 }
                                 else
                                 {
                                     if (CustomMiniPlugin.diagnosticMode){ Debug.Log("Asset " + asset.name + " has a MeshFilter"); }
-                                    if (asset.CreatureLoaders[0].LoadedAsset.GetComponent<MeshFilter>().mesh == null)
+                                    if (asset.BaseLoader.LoadedAsset.GetComponent<MeshFilter>().mesh == null)
                                     {
-                                        Debug.Log("Asset " + asset.name + " has a null CreatureLoaders[0] MeshFilter mesh");
+                                        Debug.Log("Asset " + asset.name + " has a null BaseLoader MeshFilter mesh");
                                         loaded = false; break;
                                     }
                                     else

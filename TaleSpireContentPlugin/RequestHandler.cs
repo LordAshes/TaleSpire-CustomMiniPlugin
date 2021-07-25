@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-
+using System.Linq;
 using BepInEx;
 using Dummiesman;
 using UnityEngine;
@@ -13,6 +13,28 @@ namespace LordAshes
         {
             // Playing Animation Status
             public List<CreatureBoardAsset> playingAnimation = new List<CreatureBoardAsset>();
+
+            // Temporary Effects
+            public int effectDuration = 100;
+            private Dictionary<CreatureGuid, int> effectTimers = new Dictionary<CreatureGuid, int>();
+
+            /// <summary>
+            /// Pseudo Update method called from CMP main thread
+            /// </summary>
+            public void Update()
+            {
+                for(int d=0; d<effectTimers.Count; d++)
+                {
+                    effectTimers[effectTimers.ElementAt(d).Key] = effectTimers.ElementAt(d).Value - 1;
+                    Debug.Log(effectTimers.ElementAt(d).Key + " is at " + effectTimers.ElementAt(d).Value);
+                    if (effectTimers[effectTimers.ElementAt(d).Key]<=0)
+                    {
+                        StatMessaging.SetInfo(effectTimers.ElementAt(d).Key, CustomMiniPlugin.Guid + ".effectTemporary", "");
+                        effectTimers.Remove(effectTimers.ElementAt(d).Key);
+                        d = d - 1;
+                    }
+                }
+            }
 
             /// <summary>
             /// Callback method that is informed by StatMessaging when the Stat Block has changed.
@@ -45,11 +67,23 @@ namespace LordAshes
                                 PlayAnimation(asset, change.value);
                             }
                         }
+                        else if (change.key.Contains(".effectTemporary"))
+                        {
+                            // Process the request (since remove has a blank value this will trigger mesh removal)
+                            Debug.Log("Effect Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
+                            LoadCustomContent(asset, LoadType.effectTemporary, (FileAccessPlugin.GetProtocol(change.value) == "") ? (change.value + "/" + change.value) : change.value);
+                        }
+                        else if (change.key.Contains(".effectScaled"))
+                        {
+                            // Process the request (since remove has a blank value this will trigger mesh removal)
+                            Debug.Log("Effect Scaled Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
+                            LoadCustomContent(asset, LoadType.effectScaled, (FileAccessPlugin.GetProtocol(change.value) == "") ? (change.value + "/" + change.value) : change.value);
+                        }
                         else if (change.key.Contains(".effect"))
                         {
                             // Process the request (since remove has a blank value this will trigger mesh removal)
                             Debug.Log("Effect Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
-                            LoadCustomContent(asset, LoadType.effect, (FileAccessPlugin.GetProtocol(change.value)=="") ? (change.value + "/" + change.value) : change.value);
+                            LoadCustomContent(asset, LoadType.effect, (FileAccessPlugin.GetProtocol(change.value) == "") ? (change.value + "/" + change.value) : change.value);
                         }
                         else
                         {
@@ -57,6 +91,7 @@ namespace LordAshes
                             Debug.Log("Transfromation Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
                             LoadCustomContent(asset, LoadType.mini, (FileAccessPlugin.GetProtocol(change.value) == "") ? (change.value + "/" + change.value) : change.value);
                         }
+                        if (change.value == "") { StatMessaging.ClearInfo(change.cid, change.key); }
                     }
                     else
                     {
@@ -124,19 +159,55 @@ namespace LordAshes
                 {
                     UnityEngine.Debug.Log("Customizing Mini '" + StatMessaging.GetCreatureName(asset.Creature) + "' Using '" + source + "' Type '" + style.ToString() + "'...");
 
-                    string prefix = (style == LoadType.effect) ? "CustomEffect:" : "CustomContent:";
+                    string prefix = (style == LoadType.mini) ? "CustomContent:" : style.ToString().Substring(0,1).ToUpper()+style.ToString().Substring(1)+":";
 
-                    if(GameObject.Find(prefix + asset.Creature.CreatureId) != null)
+                    if (asset == null) { Debug.Log("No mini selection provided."); return; }
+
+                    if (GameObject.Find(prefix + asset.Creature.CreatureId) != null)
                     { 
                         // Destroy previous GO if there was one
                         GameObject.Destroy(GameObject.Find(prefix + asset.Creature.CreatureId));
-                        // Remove current mesh(s) in case original mini has multiple CreatureLoaders if transformation is a mini transformation
-                        if (style == LoadType.mini)
+                    }
+                    else
+                    {
+                        Debug.Log("GO object '" + prefix + asset.Creature.CreatureId + "' not found");
+                    }
+                    // Remove current mesh(s) in case original mini has multiple CreatureLoaders if transformation is a mini transformation
+                    if (style == LoadType.mini)
+                    {
+                        bool pass = false;
+                        if (asset.CreatureLoaders != null)
                         {
+                            pass = (asset.CreatureLoaders.Length>0);
+                            Debug.Log("CreatureLoaders Has "+asset.CreatureLoaders.Length+" Entries");
                             foreach (AssetLoader loader in asset.CreatureLoaders)
                             {
-                                loader.LoadedAsset.GetComponent<MeshFilter>().mesh.triangles = new int[0];
+                                MeshFilter mf = loader.LoadedAsset.GetComponent<MeshFilter>();
+                                if (mf != null)
+                                {
+                                    Mesh mesh = mf.mesh;
+                                    if (mesh != null)
+                                    {
+                                        mesh.triangles = new int[0];
+                                    }
+                                    else
+                                    {
+                                        Debug.Log("Mesh Does Not Exist");
+                                        pass = false; break;
+                                    }
+                                }
+                                else
+                                {
+                                    Debug.Log("MeshFilter Does Not Exist");
+                                    pass = false; break;
+                                }
                             }
+                        }
+                        if(!pass)
+                        {
+                            Debug.Log("Creature Did Not Pass CreatureLoaders Test");
+                            SystemMessage.DisplayInfoText("Selected Mini Is Not Compatible\r\nWith The CMP Plugin.");
+                            return;
                         }
                     }
                     // Exit if a remove request was issued
@@ -167,23 +238,18 @@ namespace LordAshes
                             case "": // AssetBundle Source
                                 string assetBundleName = System.IO.Path.GetFileNameWithoutExtension(source);
                                 Debug.Log("AssetBundle '"+ assetBundleName + "' Content Load From "+ fullPathSource);
-                                AssetBundle assetBundle = null;
-                                foreach (AssetBundle ab in AssetBundle.GetAllLoadedAssetBundles())
+                                AssetBundle assetBundle = FileAccessPlugin.AssetBundle.Load(source);
+                                try
                                 {
-                                    if (ab.name == assetBundleName) { assetBundle = ab; break; }
+                                    content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(System.IO.Path.GetFileNameWithoutExtension(source)));
+                                    foundUsableSource = true;
                                 }
-                                if (assetBundle != null)
+                                catch (Exception)
                                 {
-                                    UnityEngine.Debug.Log("AssetBundle Is Already Loaded. Reusing.");
+                                    Debug.Log("Unable To Use AssetBundle. Looking For Alterate Source.");
+                                    assetBundle = null;
                                 }
-                                else
-                                { 
-                                    UnityEngine.Debug.Log("AssetBundle Is Not Already Loaded. Loading.");
-                                    assetBundle = FileAccessPlugin.AssetBundle.Load(source); 
-                                }
-                                content = null;
-                                try { content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(System.IO.Path.GetFileNameWithoutExtension(source))); } catch(Exception) {;}
-                                foundUsableSource = true;
+                                if (assetBundle != null) { assetBundle.Unload(false); }
                                 break;
                             default:
                                 break;
@@ -204,20 +270,38 @@ namespace LordAshes
                     // Rename template GO in case it is used for animations
                     content.name = prefix + asset.Creature.CreatureId;
 
-                    if (style == LoadType.mini)
+                    if ((style == LoadType.mini) || (style == LoadType.effectScaled))
                     {
-                        // Replace original mini mesh and material
-                        Debug.Log("Replacing originl mini mesh");
+                        // Resizing custom asset
                         float baseRadiusMagicNumber = 0.570697f; // Base size for a regular character
                         float creatureScaleFactor = content.transform.localScale.x * asset.BaseRadius / baseRadiusMagicNumber;
                         Debug.Log("(CreatureScale)" + content.transform.localScale + "x(Base Size)" + asset.BaseRadius + "/(BaseUnitSize)" + baseRadiusMagicNumber + "=(CreatureScale)" + creatureScaleFactor);
-                        asset.CreatureLoaders[0].transform.localScale = new Vector3(content.transform.localScale.x, content.transform.localScale.y, content.transform.localScale.z);
-                        ReplaceGameObjectMesh(content, asset.CreatureLoaders[0].LoadedAsset);
+                        if (style == LoadType.mini)
+                        {
+                            asset.CreatureLoaders[0].transform.localScale = new Vector3(content.transform.localScale.x, content.transform.localScale.y, content.transform.localScale.z);
+                        }
+                        else if (style == LoadType.effectScaled)
+                        {
+                            content.transform.localScale = new Vector3(content.transform.localScale.x * creatureScaleFactor, content.transform.localScale.y * creatureScaleFactor, content.transform.localScale.z * creatureScaleFactor);
+                        }
+                    }
+
+                    // Replace original mini mesh and material
+                    if (style == LoadType.mini)
+                    {
                         asset.CreatureLoaders[0].transform.localPosition = new Vector3(0, 0, 0);
+                        Debug.Log("Replacing originl mini mesh");
+                        if(!ReplaceGameObjectMesh(content, asset.CreatureLoaders[0].LoadedAsset))
+                        {
+                            Debug.Log("Non-Compatible Mini Used. Aborting...");
+                            SystemMessage.DisplayInfoText("Selected Mini Is Not Compatible\r\nWith The CMP Plugin.");
+                            GameObject.Destroy(content);
+                            return;
+                        }
                     }
 
                     // Attach GO only if content has animation
-                    if(style == LoadType.effect || content.GetComponent<Animation>()!=null)
+                    if(style != LoadType.mini || content.GetComponent<Animation>()!=null)
                     {
                         // Attach GO for effects or animated minis. Turn renderer off until needed.
                         Debug.Log("Attaching GO for effects or animated minis");
@@ -237,6 +321,13 @@ namespace LordAshes
                         Debug.Log("Removing template GO for non-animated minis");
                         GameObject.Destroy(content);
                     }
+
+                    // Add temporary effects to duration timers
+                    if(style == LoadType.effectTemporary)
+                    {
+                        Debug.Log("Turning on duration timer");
+                        effectTimers.Add(asset.Creature.CreatureId, effectDuration);
+                    }
                 }
                 catch (Exception x)
                 {
@@ -250,32 +341,32 @@ namespace LordAshes
             /// </summary>
             /// <param name="source"></param>
             /// <param name="destination"></param>
-            public void ReplaceGameObjectMesh(GameObject source, GameObject destination)
+            public bool ReplaceGameObjectMesh(GameObject source, GameObject destination)
             {
-                if (destination == null) { Debug.Log("Destination Is Null"); }
+                if (destination == null) { Debug.Log("Destination Is Null"); return false; }
                 MeshFilter dMF = destination.GetComponent<MeshFilter>();
                 MeshRenderer dMR = destination.GetComponent<MeshRenderer>();
-                if (dMF == null || dMR == null) { Debug.LogWarning("Unable get destination MF or MR."); return; }
+                if (dMF == null || dMR == null) { Debug.LogWarning("Unable get destination MF or MR."); return false; }
 
-                // destination.transform.position = new Vector3(0, 0, 0);
-                // destination.transform.rotation = Quaternion.Euler(0, 0, 0);
-                // destination.transform.eulerAngles = new Vector3(0, 0, 0);
+                destination.transform.position = new Vector3(0, 0, 0);
+                destination.transform.rotation = Quaternion.Euler(0, 0, 0);
+                destination.transform.eulerAngles = new Vector3(0, 0, 0);
                 destination.transform.localPosition = new Vector3(0, 0, 0);
                 destination.transform.localRotation = Quaternion.Euler(0, 0, 0);
                 destination.transform.localEulerAngles = new Vector3(0, 180, 0);
                 destination.transform.localScale = new Vector3(1f, 1f, 1f);
 
-                // dMF.transform.position = new Vector3(0, 0, 0);
-                // dMF.transform.rotation = Quaternion.Euler(0, 0, 0);
-                // dMF.transform.eulerAngles = new Vector3(0, 0, 0);
+                dMF.transform.position = new Vector3(0, 0, 0);
+                dMF.transform.rotation = Quaternion.Euler(0, 0, 0);
+                dMF.transform.eulerAngles = new Vector3(0, 0, 0);
                 dMF.transform.localPosition = new Vector3(0, 0, 0);
                 dMF.transform.localRotation = Quaternion.Euler(0, 0, 0);
                 dMF.transform.localEulerAngles = new Vector3(0, 0, 0);
                 dMF.transform.localScale = new Vector3(1, 1, 1);
 
-                // dMR.transform.position = new Vector3(0, 0, 0);
-                // dMR.transform.rotation = Quaternion.Euler(0, 0, 0);
-                // dMR.transform.eulerAngles = new Vector3(0, 0, 0);
+                dMR.transform.position = new Vector3(0, 0, 0);
+                dMR.transform.rotation = Quaternion.Euler(0, 0, 0);
+                dMR.transform.eulerAngles = new Vector3(0, 0, 0);
                 dMR.transform.localPosition = new Vector3(0, 0, 0);
                 dMR.transform.localRotation = Quaternion.Euler(0, 0, 0);
                 dMR.transform.localEulerAngles = new Vector3(0, 0, 0);
@@ -307,6 +398,8 @@ namespace LordAshes
                     dMR.material = sSMR.material;
                     dMR.material.shader = shaderSave;
                 }
+
+                return true;
             }
 
             public Renderer FindRenderer(AssetLoader asset)
@@ -340,7 +433,9 @@ namespace LordAshes
             public enum LoadType
             {
                 mini = 1,
-                effect = 11
+                effect = 11,
+                effectScaled = 12,
+                effectTemporary = 13
             }
         }
     }
