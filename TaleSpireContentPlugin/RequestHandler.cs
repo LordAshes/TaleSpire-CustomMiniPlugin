@@ -55,7 +55,11 @@ namespace LordAshes
                     CreaturePresenter.TryGetAsset(change.cid, out asset);
                     if (asset != null)
                     {
-                        if(change.key.Contains(".assetAnimation"))
+                        string source = change.value.Contains(".") ? change.value.Substring(0, change.value.IndexOf(".")) : change.value;
+                        string prefab = change.value.Contains(".") ? change.value.Substring(change.value.IndexOf(".") + 1) : change.value;
+                        if (FileAccessPlugin.GetProtocol(source) == "") { source = (source + "/" + source); }
+
+                        if (change.key.Contains(".assetAnimation"))
                         {
                             if (change.value != "")
                             {
@@ -71,25 +75,25 @@ namespace LordAshes
                         {
                             // Process the request (since remove has a blank value this will trigger mesh removal)
                             Debug.Log("Effect Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
-                            LoadCustomContent(asset, LoadType.effectTemporary, (FileAccessPlugin.GetProtocol(change.value) == "") ? (change.value + "/" + change.value) : change.value);
+                            LoadCustomContent(asset, LoadType.effectTemporary, source, prefab);
                         }
                         else if (change.key.Contains(".effectScaled"))
                         {
                             // Process the request (since remove has a blank value this will trigger mesh removal)
                             Debug.Log("Effect Scaled Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
-                            LoadCustomContent(asset, LoadType.effectScaled, (FileAccessPlugin.GetProtocol(change.value) == "") ? (change.value + "/" + change.value) : change.value);
+                            LoadCustomContent(asset, LoadType.effectScaled, source, prefab);
                         }
                         else if (change.key.Contains(".effect"))
                         {
                             // Process the request (since remove has a blank value this will trigger mesh removal)
                             Debug.Log("Effect Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
-                            LoadCustomContent(asset, LoadType.effect, (FileAccessPlugin.GetProtocol(change.value) == "") ? (change.value + "/" + change.value) : change.value);
+                            LoadCustomContent(asset, LoadType.effect, source, prefab);
                         }
                         else
                         {
                             // Process the request (since remove has a blank value this will trigger mesh removal)
                             Debug.Log("Transfromation Request For '" + asset.Creature.Name + "' (" + change.cid + ") To '" + change.value + "'");
-                            LoadCustomContent(asset, LoadType.mini, (FileAccessPlugin.GetProtocol(change.value) == "") ? (change.value + "/" + change.value) : change.value);
+                            LoadCustomContent(asset, LoadType.mini, source, prefab);
                         }
                         if (change.value == "") { StatMessaging.ClearInfo(change.cid, change.key); }
                     }
@@ -109,6 +113,9 @@ namespace LordAshes
             {
                 // Find corresponding attached Game Object
                 Debug.Log("Getting Animation Object");
+                string source = StatMessaging.ReadInfo(asset.Creature.CreatureId, CustomMiniPlugin.Guid);
+                if (source.Contains(".")) { source = source.Substring(0, source.IndexOf(".")); }
+                LoadCustomContent(asset, LoadType.animation, source+"/"+source,animationName);
                 GameObject animationObject = GameObject.Find("CustomContent:" + asset.Creature.CreatureId);
                 if(animationObject!=null)
                 {
@@ -126,9 +133,8 @@ namespace LordAshes
                                 // Play animation
                                 Debug.Log("Switching " + StatMessaging.GetCreatureName(asset.Creature) + " (" + asset.Creature.CreatureId + ") to GO renderer");
                                 FindRenderer(asset.CreatureLoaders[0]).enabled = false;
-                                FindRenderer(animationObject).enabled = true;
                                 playingAnimation.Add(asset);
-                                Debug.Log("Activating Animation");
+                                Debug.Log("Activating Animation '"+state.name+"'");
                                 anim.Stop();
                                 anim.Play(state.name);
                                 return;
@@ -153,13 +159,13 @@ namespace LordAshes
             /// </summary>
             /// <param name="asset">Parent asset to whom the custom mesh will be attached</param>
             /// <param name="source">Path and name of the content file</param>
-            public void LoadCustomContent(CreatureBoardAsset asset, LoadType style, string source, Action<string,CreatureGuid> missingContentCallback = null)
+            public void LoadCustomContent(CreatureBoardAsset asset, LoadType style, string source, string prefab, Action<string,CreatureGuid> missingContentCallback = null)
             {
                 try
                 {
-                    UnityEngine.Debug.Log("Customizing Mini '" + StatMessaging.GetCreatureName(asset.Creature) + "' Using '" + source + "' Type '" + style.ToString() + "'...");
+                    UnityEngine.Debug.Log("Customizing Mini '" + StatMessaging.GetCreatureName(asset.Creature) + "' Using '" + source + " ("+prefab+")' Type '" + style.ToString() + "'...");
 
-                    string prefix = (style == LoadType.mini) ? "CustomContent:" : style.ToString().Substring(0,1).ToUpper()+style.ToString().Substring(1)+":";
+                    string prefix = (style == LoadType.mini || style == LoadType.animation) ? "CustomContent:" : style.ToString().Substring(0,1).ToUpper()+style.ToString().Substring(1)+":";
 
                     if (asset == null) { Debug.Log("No mini selection provided."); return; }
 
@@ -210,6 +216,12 @@ namespace LordAshes
                             return;
                         }
                     }
+                    else if (style == LoadType.animation)
+                    {
+                        // Turn of mini renderer
+                        FindRenderer(asset.CreatureLoaders[0]).enabled = false;
+                    }
+
                     // Exit if a remove request was issued
                     if (source == "/") { return; }
 
@@ -237,19 +249,20 @@ namespace LordAshes
                                 break;
                             case "": // AssetBundle Source
                                 string assetBundleName = System.IO.Path.GetFileNameWithoutExtension(source);
-                                Debug.Log("AssetBundle '"+ assetBundleName + "' Content Load From "+ fullPathSource);
+                                Debug.Log("Prefab '"+prefab+"' from AssetBundle '"+ assetBundleName + "' loaded from '"+ fullPathSource+"'");
                                 AssetBundle assetBundle = FileAccessPlugin.AssetBundle.Load(source);
                                 try
                                 {
-                                    content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(System.IO.Path.GetFileNameWithoutExtension(source)));
+                                    content = GameObject.Instantiate(assetBundle.LoadAsset<GameObject>(prefab));
+                                    assetBundle.Unload(false);
                                     foundUsableSource = true;
                                 }
                                 catch (Exception)
                                 {
                                     Debug.Log("Unable To Use AssetBundle. Looking For Alterate Source.");
+                                    if (assetBundle != null) { assetBundle.Unload(false); }
                                     assetBundle = null;
                                 }
-                                if (assetBundle != null) { assetBundle.Unload(false); }
                                 break;
                             default:
                                 break;
@@ -269,8 +282,15 @@ namespace LordAshes
 
                     // Rename template GO in case it is used for animations
                     content.name = prefix + asset.Creature.CreatureId;
+                    if (style != LoadType.mini)
+                    {
+                        Debug.Log("Parenting GO to CreatureLoaders[0]");
+                        content.transform.position = asset.CreatureLoaders[0].transform.position;
+                        content.transform.rotation = asset.CreatureLoaders[0].transform.rotation;
+                        content.transform.SetParent(asset.CreatureLoaders[0].transform);
+                    }
 
-                    if ((style == LoadType.mini) || (style == LoadType.effectScaled))
+                    if ((style == LoadType.mini) || (style == LoadType.animation) || (style == LoadType.effectScaled))
                     {
                         // Resizing custom asset
                         float baseRadiusMagicNumber = 0.570697f; // Base size for a regular character
@@ -283,6 +303,10 @@ namespace LordAshes
                         else if (style == LoadType.effectScaled)
                         {
                             content.transform.localScale = new Vector3(content.transform.localScale.x * creatureScaleFactor, content.transform.localScale.y * creatureScaleFactor, content.transform.localScale.z * creatureScaleFactor);
+                        }
+                        else if(style == LoadType.animation)
+                        {
+                            content.transform.localScale = new Vector3(creatureScaleFactor, creatureScaleFactor, creatureScaleFactor);
                         }
                     }
 
@@ -299,31 +323,14 @@ namespace LordAshes
                             return;
                         }
                     }
-
-                    // Attach GO only if content has animation
-                    if(style != LoadType.mini || content.GetComponent<Animation>()!=null)
+                    if (style == LoadType.mini)
                     {
-                        // Attach GO for effects or animated minis. Turn renderer off until needed.
-                        Debug.Log("Attaching GO for effects or animated minis");
-                        content.transform.position = asset.BaseLoader.transform.position;
-                        content.transform.rotation = asset.BaseLoader.transform.rotation;
-                        content.transform.SetParent(asset.BaseLoader.transform);
-                        if (style == LoadType.mini)
-                        {
-                            // Hide GO object if the mini is an animated mini (as opposed to an effect)
-                            Debug.Log("Turning off GO renderer for animated minis");
-                            FindRenderer(content).enabled = false;
-                        }
-                    }
-                    else
-                    {
-                        // Destroy template GO object if the object is a non-animated mini
                         Debug.Log("Removing template GO for non-animated minis");
                         GameObject.Destroy(content);
                     }
 
                     // Add temporary effects to duration timers
-                    if(style == LoadType.effectTemporary)
+                    if (style == LoadType.effectTemporary)
                     {
                         Debug.Log("Turning on duration timer");
                         effectTimers.Add(asset.Creature.CreatureId, effectDuration);
@@ -376,6 +383,7 @@ namespace LordAshes
                 if (sMF != null)
                 {
                     Debug.Log("Copying MF->MF");
+                    Debug.Log("Mesh From " + sMF.mesh.name + " / "+sMF.sharedMesh.name+" (" + (sMF.mesh.triangles.Length / 3).ToString() + " Polygons / "+(sMF.mesh.triangles.Length / 3).ToString()+" Polygons)");
                     dMF.mesh = sMF.mesh;
                     dMF.sharedMesh = sMF.sharedMesh;
                 }
@@ -384,6 +392,7 @@ namespace LordAshes
                 if (sMR != null)
                 {
                     Debug.Log("Copying MR->MR");
+                    Debug.Log("Material From " + sMR.material.name + " / " + sMR.sharedMaterial.name );
                     Shader shaderSave = dMR.material.shader;  // Shader must be maintained in order for the Stealth mode to work automatically
                     dMR.sharedMaterials = sMR.sharedMaterials;
                     dMR.material.shader = shaderSave;
@@ -393,8 +402,10 @@ namespace LordAshes
                 if (sSMR != null)
                 {
                     Debug.Log("Copying SMR->MF/MR");
+                    Debug.Log("Mesh From "+ sSMR.sharedMesh.name+" ("+(sSMR.sharedMesh.triangles.Length/3).ToString()+" Polygons)");
                     dMF.sharedMesh = sSMR.sharedMesh;
                     Shader shaderSave = dMR.material.shader; // Shader must be maintained in order for the Stealth mode to work automatically
+                    Debug.Log("Material From " + sSMR.material.name);
                     dMR.material = sSMR.material;
                     dMR.material.shader = shaderSave;
                 }
@@ -435,7 +446,8 @@ namespace LordAshes
                 mini = 1,
                 effect = 11,
                 effectScaled = 12,
-                effectTemporary = 13
+                effectTemporary = 13,
+                animation = 101
             }
         }
     }

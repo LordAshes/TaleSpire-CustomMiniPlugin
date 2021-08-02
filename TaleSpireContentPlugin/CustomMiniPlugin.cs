@@ -17,7 +17,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "5.3.2.0";
+        public const string Version = "5.4.0.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
@@ -25,6 +25,7 @@ namespace LordAshes
         // Triggers
         private ConfigEntry<KeyboardShortcut>[] actionTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[6];
         private ConfigEntry<KeyboardShortcut>[] animTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[5];
+        private ConfigEntry<KeyboardShortcut>[] poseTriggers { get; set; } = new ConfigEntry<KeyboardShortcut>[5];
 
         // Request handelr
         private static RequestHandler requestHandler = new RequestHandler();
@@ -72,6 +73,12 @@ namespace LordAshes
             animTriggers[2] = Config.Bind("Hotkeys", "Animation 3", new KeyboardShortcut(KeyCode.Alpha6, KeyCode.LeftControl));
             animTriggers[3] = Config.Bind("Hotkeys", "Animation 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.LeftControl));
             animTriggers[4] = Config.Bind("Hotkeys", "Animation 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.LeftControl));
+
+            poseTriggers[0] = Config.Bind("Hotkeys", "Pose 1", new KeyboardShortcut(KeyCode.Alpha4, KeyCode.RightControl));
+            poseTriggers[1] = Config.Bind("Hotkeys", "Pose 2", new KeyboardShortcut(KeyCode.Alpha5, KeyCode.RightControl));
+            poseTriggers[2] = Config.Bind("Hotkeys", "Pose 3", new KeyboardShortcut(KeyCode.Alpha6, KeyCode.RightControl));
+            poseTriggers[3] = Config.Bind("Hotkeys", "Pose 4", new KeyboardShortcut(KeyCode.Alpha7, KeyCode.RightControl));
+            poseTriggers[4] = Config.Bind("Hotkeys", "Pose 5", new KeyboardShortcut(KeyCode.Alpha8, KeyCode.RightControl));
 
             // Update use of mini transformation radial menu item
             useMiniTransformationMenuItem = Config.Bind("Settings", "Use mini transformation radial menu item", true).Value;
@@ -263,8 +270,27 @@ namespace LordAshes
                     }
                 }
 
+                // Check for Quick Poses
+                for (int a = 0; a < poseTriggers.Length; a++)
+                {
+                    if (StrictKeyCheck(poseTriggers[a].Value))
+                    {
+                        Debug.Log("Pose " + (a + 1) + " Key Pressed");
+                        string source = StatMessaging.ReadInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid);
+                        if (source.Contains(".")) { source = source.Substring(0, source.IndexOf(".")); }
+                        if (a == 0)
+                        {
+                            StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, source);
+                        }
+                        else
+                        {
+                            StatMessaging.SetInfo(LocalClient.SelectedCreatureId, CustomMiniPlugin.Guid, source + ".Pose" + a);
+                        }
+                    }
+                }
+
                 // Check for ended animations
-                for(int c=0; c<requestHandler.playingAnimation.Count; c++)
+                for (int c=0; c<requestHandler.playingAnimation.Count; c++)
                 {
                     GameObject go = GameObject.Find("CustomContent:" + requestHandler.playingAnimation.ElementAt(c).Creature.CreatureId);
 
@@ -272,7 +298,7 @@ namespace LordAshes
                     {
                         Debug.Log("Switching " + StatMessaging.GetCreatureName(requestHandler.playingAnimation.ElementAt(c)) + " (" + requestHandler.playingAnimation.ElementAt(c).Creature.CreatureId + ") to mini mesh renderer");
                         requestHandler.FindRenderer(requestHandler.playingAnimation.ElementAt(c).CreatureLoaders[0]).enabled = true;
-                        requestHandler.FindRenderer(go).enabled = false;
+                        GameObject.Destroy(go);
                         requestHandler.playingAnimation.RemoveAt(c);
                         c = c - 1;
                     }
@@ -310,7 +336,7 @@ namespace LordAshes
         public bool StrictKeyCheck(KeyboardShortcut check)
         {
             if(!check.IsUp()) { return false; }
-            foreach (KeyCode modifier in new KeyCode[]{KeyCode.LeftAlt, KeyCode.RightAlt, KeyCode.LeftControl, KeyCode.RightControl, KeyCode.LeftShift, KeyCode.RightShift })
+            foreach (KeyCode modifier in new KeyCode[]{KeyCode.LeftAlt, KeyCode.RightAlt, KeyCode.LeftControl, KeyCode.RightControl, KeyCode.RightControl, KeyCode.RightShift })
             {
                 if (Input.GetKey(modifier) != check.Modifiers.Contains(modifier)) { return false; }
             }
