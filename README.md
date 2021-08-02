@@ -16,6 +16,10 @@ Distributing CMP Content: https://youtu.be/wckyKTD7nPw
 
 ## Change Log
 
+5.4.0: Added Poses and keyboard shortcut for quick access to default poses.
+
+5.4.0: Modified animations to use individual prefabs for easier creation of non-t-pose base and related animations.
+
 5.3.2: AssetBundles are now always unload after prefab is made to free up memory and prevent issues with reusing an assetBundle
 
 5.3.1: Bug fix to prevent non-compatible minis from locking up CMP
@@ -41,21 +45,22 @@ Distributing CMP Content: https://youtu.be/wckyKTD7nPw
 5.0.1: Added optional diagnostic mode (off by default) to provide more console logs regarding startup and board reload
 
 5.0.0: Switched to using mesh transfer for normal and fly mode with added GO being used only for effects and animation.
-
 5.0.0: Fixes Line of Sight Visility.
 
 5.0.0: Fixes ability to select mini by any part of the mini (not just the base).
+
+4.9.2: Fixed bug with board reload and transformed mini delete
 
 4.9.1: Bug fix to support both MeshRenderer and SkinnedMeshRenderer assets.
 
 4.9.0: Flying mode is now done the same way as regular mode. This means consistent texture (with transparency) and stealth in both modes.
        This fix also allows animations to be used in fly mode.
-       
+
 4.8.0: Fixed support for BMP, CRN, DDS, JPG, PNG and TGA texture files
 
 4.7.0: Text at the top of the screen indicates the common TaleSpire_CustomData folder where custom content is expected to be found
        (shows only when one of the transformation dialog windows are open)
-       
+
 4.7.0: When the indicated transformation content is not found, a message indicates the TaleSpire_CustomData folder where it was expected.
 
 4.6.1: Moved CustomData folder to a plugins folder so that the CustomData contents don't get flattened when the plugin is installed
@@ -144,7 +149,7 @@ with any other contents if the folder already exists.
 
 ## Usage
 
-### Transforming Minis
+### Transforming Minis And Accessign Poses
 
 Add a mini to the board and select it. To transform the mini, press the Transform shotcut (Left CTRL+M by default but can be changed in
 R2ModMan configuration for the plugin). Enter the name of the content to which the mini should be transformed. Ensure that the entered
@@ -161,6 +166,9 @@ TaleSpire_CustomData\Minis\Wizard01\Wizard01
 
 Transformations are automatically loaded when the board is loaded as long as the client has the corresponding content files.
 
+Difference poses, if available, can be accessed by specifying the content name followed by a dot and the pose. For example, the content
+name 'Trix.Crouch' would look up the Crouch pose in the Trix assetBundle.
+
 ### Initiating Effect
 
 Each mini can have one effect active at a time. This process works identically to the Mini Transformation process except it
@@ -169,19 +177,32 @@ Pressing the Effects shortcut (Left CTRL + E by default but can be changed in th
 to the Mini Transformation. Enter the name of the (effect) content as usual. It will be applied to the mini while maintaining
 the mini's appearance. This is ideal for adding effects which are tied to the caster's position.
 
+The Scaled Effect (LCTRL+S) and the Temporary Effect (LCTRL+W) work the same way but are, for now, only available through
+keyboard shortcut. Scaled And Temporary Effect scale the effect size to the mini size if the mini is not regular size (regular
+Effect always loads as if a standard sized character). In addition, Temporary Effect disappears after a few seconds.
+
 ### Removing Effects
 
 The transformation dialogs now has a Remove button which will remove mini transformations and effects (depending on which
 dialog is used). However, please note that the Remove for Mini Transformation is less useful since the original mini mesh
 is not restored.
 
-### Sample Kiki Asset
+### Automatic And Manual Load On Session/Board Reload
 
-If you have unzipped the TaleSpire_CustomData ZIP file into the proper location (as per installation instructions) you will have
-access to the Kiki sample asset. Use the usual transformation steps to transform a mini into Kiki. When entering the content name
-type "kiki" (all lower case without quotes). Once the asset is loaded you can cycle through the various animation by pressing the
-keyboard shortcuts (default LCTRL+4 to LCTRL+8). Anim1=Ready, Anim2=Cast, Anim3=Die, Anim4=Dance you can also use the Play Animation
-to trigger any of these animations or "T-Pose" (without quotes) to switch Kiki into her T-Pose.
+CMP has code to try to detected when minis have fully loaded and when it is safe to apply any previously saved transformations.
+However, this automatic detection is not always accurate since TS does not provide a nice signal as to when all of the minis
+have loaded. There is a CMP R2ModMan settings that can be adjusted to allow CMP more time to detect new minis but making the
+setting a larger negative number means that CMP has better chances of detecting still loading minis but it also means a longer
+wait time when loading smaller boards. As such, CMP also provides a manual load option where the user tells CMP to apply any
+saved transformation. Basically the user waits until board and all minis have fully loaded and then uses this maual "load"
+option. In such a case, the CMP automatic setting should be kept fairly low such as the default of -200 or less. However, the
+setting should never be 0 or a positive number. 
+
+### Sample Trix Asset
+
+Use the usual transformation steps to transform a mini into Kiki. When entering the content name type "trix" (all lower case
+without quotes). Once the asset is loaded you can cycle through the various animation by pressing the keyboard shortcuts
+(default LCTRL+4 to LCTRL+6 since only 3 animations are defined) and the various poses (default RCTRL+4 to RCTRL+8). 
 
 ## Adding Custom Content
 
@@ -209,22 +230,27 @@ The folder, assetBundle file and the content within it should all have the same 
 
 \Steam\steamapps\common\TaleSpire\TaleSpire_CustomData\Minis\Wizard01\Wizard01 should contain a Wizard01 prefab.
 
-## Animations & Poses
+## Base Appearance, Poses And Animations
 
-Assets (minis or effect) which define one or more animations called Anim1, Anim2, Anim3, Anim4 or Anim5 can be triggered directly
-by pressing the corresponing shortcut keys (default LCTRL+4 to LCTRL+8) which can be configured in R2ModMan for the CMP plugin.
-Other animation on the asset can be played by name by pressing the Play Animation keyboard shortcut (default LCTRL+P) and then
-entering name of the animation as it appears in the assetBundle.
+The base appearance (the appearance when the mini is not animated) is defined in a prefab that matches the name of the content.
+For example if the asebtBundle is named Trix then the base appearance is expected in a prefab called Trix. This prefab does not
+need to have an armature since it is not animated. Any animations on this prefab will be ignored.
 
-Please note that animations should not be looping since this consumes significant CPU and can prevent TS from being reactive.
-Use either the Once setting or the Clamp Forever setting. The Once setting is ideal for animations because the asset it returned
-back to the default state afterwards. The Clamp Forever setting is ideal for poses because the last frame of the animation is held 
-until a different animation/pose is activated.
+Poses are additional static prefabs (prefabs with no animations) which have a different name than the content name. Normally they
+can be set using the Mini Transformation option and specifying the content name (assetBundle name) followed by a dot and then the
+desired pose name. However, there are 5 poses which can be accessed through CMP keyboard shortcuts (default RCTRL+3 to RCTRL+8).
+These correspond to the base appaerance (RCLRTL+3) and then 4 additonal poses called Pose1 to Pose4.
+
+Animations are additional prefabs which have a single animation whose name matches the prefab. These can be applied using the Play
+Animation option (default LCTRL+P) but there are 5 animations which can be triggered by CMP keyboard shortcut keys (default
+LCTRL+3 to LCTRL+8). 
+
 
 ## Limitations
 
-1. When a mini is stealthed, in GM mode only the base is visible.
-2. When a mini is flying and stealthed, in GM mode nothing is visible but the mini can still be selected (e.g. to unstealth it).
+1. Original mini rotation/position is applied to transformed minis
+2. Temporary Effect duration is not configurable
+3. Triggering poses while an animation is in progress can cause issues. 
 
 ### Multi-Creature Assets
 
