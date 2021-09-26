@@ -335,6 +335,17 @@ namespace LordAshes
                         Debug.Log("Turning on duration timer");
                         effectTimers.Add(asset.Creature.CreatureId, effectDuration);
                     }
+
+                    // Apply Asset Mod if present
+                    string[] kvp = FileAccessPlugin.File.Find(source+".Mod.kvp");
+                    if(kvp!=null)
+                    {
+                        if (kvp.Length > 0)
+                        {
+                            string[] pokes = FileAccessPlugin.File.ReadAllText(kvp[0]).Split(';');
+                            if (style == LoadType.mini) { ReflectionObjectManipulator.Transfer(asset.CreatureLoaders[0], pokes); } else { ReflectionObjectManipulator.Transfer(content, pokes); }
+                        }
+                    }
                 }
                 catch (Exception x)
                 {

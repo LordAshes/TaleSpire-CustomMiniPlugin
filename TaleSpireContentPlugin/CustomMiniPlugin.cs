@@ -17,7 +17,7 @@ namespace LordAshes
         // Plugin info
         public const string Name = "Custom Mini Plug-In";
         public const string Guid = "org.lordashes.plugins.custommini";
-        public const string Version = "5.4.0.0";
+        public const string Version = "6.0.0.0";
 
         // Content directory
         public static string dir = UnityEngine.Application.dataPath.Substring(0, UnityEngine.Application.dataPath.LastIndexOf("/")) + "/TaleSpire_CustomData/";
@@ -48,18 +48,6 @@ namespace LordAshes
         /// </summary>
         void Awake()
         {
-            // Setup cache settings
-            if(Config.Bind("Settings", "Use Cache For File List", true).Value)
-            {
-                UnityEngine.Debug.Log("Custom Mini Plugin Active. Using Cached Asset List. New Assets Cannot Be Added At Runtime.");
-                FileAccessPlugin.File.SetCacheType(FileAccessPlugin.CacheType.CacheCustomData);
-            }
-            else
-            {
-                UnityEngine.Debug.Log("Custom Mini Plugin Active. Not Using Cached Asset List. New Assets Can Be Added At Runtime.");
-                FileAccessPlugin.File.SetCacheType(FileAccessPlugin.CacheType.NoCacheCustomData);
-            }
-
             // Setup default trigger
             actionTriggers[0] = Config.Bind("Hotkeys", "Transform Mini", new KeyboardShortcut(KeyCode.M, KeyCode.LeftControl));
             actionTriggers[1] = Config.Bind("Hotkeys", "Add Effect", new KeyboardShortcut(KeyCode.E, KeyCode.LeftControl));
@@ -102,7 +90,7 @@ namespace LordAshes
                                                         FileAccessPlugin.Image.LoadSprite("Images/Icons/Effect.png"),
                                                         ActivateEffect,
                                                         true,
-                                                        null
+                                                        () => { return LocalClient.CanControlCreature(new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature())); }
                                                     );
 
             RadialUI.RadialSubmenu.CreateSubMenuItem(RadialUI.RadialUIPlugin.Guid + ".Transformation",
@@ -110,7 +98,7 @@ namespace LordAshes
                                                         FileAccessPlugin.Image.LoadSprite("Images/Icons/EffectScaled.png"),
                                                         ActivateEffectScaled,
                                                         true,
-                                                        null
+                                                        () => { return LocalClient.CanControlCreature(new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature())); }
                                                     );
 
             RadialUI.RadialSubmenu.CreateSubMenuItem(RadialUI.RadialUIPlugin.Guid + ".Transformation",
@@ -118,7 +106,7 @@ namespace LordAshes
                                                         FileAccessPlugin.Image.LoadSprite("Images/Icons/EffectTemporary.png"),
                                                         ActivateEffectTemporary,
                                                         true,
-                                                        null
+                                                        () => { return LocalClient.CanControlCreature(new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature())); }
                                                     );
 
             // Add mini sub-menu
@@ -129,7 +117,7 @@ namespace LordAshes
                                                             FileAccessPlugin.Image.LoadSprite("Images/Icons/Mini.png"),
                                                             ActivateMini,
                                                             true,
-                                                            null
+                                                            () => { return LocalClient.CanControlCreature(new CreatureGuid(RadialUI.RadialUIPlugin.GetLastRadialTargetCreature())); }
                                                         );
             };
 
